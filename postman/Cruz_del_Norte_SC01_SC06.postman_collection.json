@@ -89,7 +89,7 @@
       ]
     },
     {
-      "name": "01 - SC-01 Disponibilidad",
+      "name": "01 - SC-01 Disponibilidad Viajes",
       "item": [
         {
           "name": "200 OK - Consultar viajes existentes",
@@ -123,7 +123,7 @@
       ]
     },
     {
-      "name": "02 - SC-03 Pasajeros",
+      "name": "02 - SC-03 Validación Pasajeros",
       "item": [{
         "name": "203 Non-Authoritative - Validar pasajero académico",
         "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 203', () => pm.response.to.have.status(203));", "pm.test('Content-Type es JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));", "pm.test('Resultado es CONFORME', () => pm.expect(pm.response.json().resultado).to.eql('CONFORME'));"]}}],
@@ -136,7 +136,7 @@
       }]
     },
     {
-      "name": "03 - SC-02 Reservas",
+      "name": "03 - SC-02 Gestión Reservas",
       "item": [
         {
           "name": "201 Created - Crear reserva principal",
@@ -164,7 +164,7 @@
       ]
     },
     {
-      "name": "04 - SC-04 Pagos mock",
+      "name": "04 - SC-04 Gestión Pagos",
       "item": [
         {
           "name": "201 Created - Pago rechazado",
@@ -238,7 +238,7 @@
       ]
     },
     {
-      "name": "05 - SC-05 Pasajes",
+      "name": "05 - SC-05 Emisión Pasajes",
       "item": [
         {
           "name": "422 Unprocessable - Impedir emisión con pago rechazado",
@@ -275,7 +275,7 @@
       ]
     },
     {
-      "name": "06 - SC-06 Mantenimiento",
+      "name": "06 - SC-06 a SC-10 Mantenimiento y Flota",
       "item": [{
         "name": "201 Created - Programar mantenimiento",
         "event": [

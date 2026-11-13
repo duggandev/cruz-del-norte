@@ -4,12 +4,12 @@ Seis aplicaciones FastAPI independientes comparten una única base SQLite: `data
 
 | Servicio | Operaciones | Puerto |
 |---|---|---:|
-| SC-01 Disponibilidad de Viajes | `GET /api/v1/viajes/disponibilidad` | 8081 |
-| SC-02 Gestión de Reservas | `POST /api/v1/reservas`, `POST /api/v1/reservas/{idReserva}/liberacion` | 8082 |
-| SC-03 Validación de Pasajeros | `POST /api/v1/pasajeros/validaciones` | 8083 |
-| SC-04 Gestión de Pagos | `POST /api/v1/pagos` | 8084 |
-| SC-05 Emisión de Pasajes | `POST /api/v1/pasajes` | 8085 |
-| SC-06 Planificación de Mantenimiento | `POST /api/v1/programaciones` | 8086 |
+| SC-01 Disponibilidad Viajes | `GET /api/v1/viajes/disponibilidad` | 8081 |
+| SC-02 Gestión Reservas | `POST /api/v1/reservas`, `POST /api/v1/reservas/{idReserva}/liberacion` | 8082 |
+| SC-03 Validación Pasajeros | `POST /api/v1/pasajeros/validaciones` | 8083 |
+| SC-04 Gestión Pagos | `POST /api/v1/pagos` | 8084 |
+| SC-05 Emisión Pasajes | `POST /api/v1/pasajes` | 8085 |
+| SC-06 a SC-10 Mantenimiento y Flota | `POST /api/v1/programaciones` | 8086 |
 
 Los YAML oficiales mencionados en las especificaciones no estaban presentes en el repositorio recibido. Se conservaron las rutas, `operationId`, campos y códigos descritos en los documentos adjuntos. Antes del despliegue, los YAML oficiales deben compararse con el `/openapi.json` de cada servicio. Para la liberación de una reserva, cuyo cuerpo de respuesta no estaba detallado en el texto disponible, se adoptó el resultado mínimo `idReserva` y `estado`.
 

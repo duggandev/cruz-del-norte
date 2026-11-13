@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Cruz del Norte - SC-04 Mock Gateway (Servidor)",
+    "name": "Cruz del Norte - SC-04 Gestión Pagos - Mock Gateway (Servidor)",
     "description": "Demostración académica de SC-04 contra el Gateway publicado. Genera el JWT, crea una reserva válida y verifica todos los escenarios deterministas del simulador.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
