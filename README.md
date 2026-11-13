@@ -119,7 +119,7 @@ Con `PAYMENT_PROVIDER=mock` y `PAYMENT_MOCK_ENABLED=true`, PASARELA usa exclusiv
 | `mock_error` | Error simulado de procesamiento | 502 |
 | `mock_timeout` | Tiempo de espera simulado | 504 |
 
-Las transacciones simuladas usan una secuencia protegida por la transacción SQLite: `MOCK-000001`, `MOCK-000002`, etc. Se registran con proveedor `MOCK_GATEWAY` y referencias `MOCK_REF-000001`, sin persistir el token ficticio. Para probar desde Postman, importe `postman/Cruz_del_Norte_SC04_Mock.postman_collection.json`, configure su JWT en la variable `token` y ejecute las solicitudes en el orden numerado: rechazado, pendiente y aprobado. El aprobado va al final porque, correctamente, impide cobros posteriores sobre la misma reserva.
+Las transacciones simuladas usan una secuencia protegida por la transacción SQLite: `MOCK-000001`, `MOCK-000002`, etc. Se registran con proveedor `MOCK_GATEWAY` y referencias `MOCK_REF-000001`, sin persistir el token ficticio. Para probar solo SC-04, importe `postman/Cruz_del_Norte_SC04_Mock.postman_collection.json`. Para ejecutar el flujo completo desde el Gateway, importe `postman/Cruz_del_Norte_SC01_SC06.postman_collection.json`, configure `baseUrl` y `token`, y ejecute la colección en el orden definido.
 
 ## Pruebas automatizadas
 
