@@ -14,7 +14,6 @@ x-service-common: &service-common
   restart: unless-stopped
   volumes:
     - cruz_data:/app/data
-    - pasajes_storage:/app/storage/pasajes
   networks:
     - cruz_backend
   depends_on:
@@ -29,7 +28,6 @@ services:
     environment: *common-env
     volumes:
       - cruz_data:/app/data
-      - pasajes_storage:/app/storage/pasajes
     networks:
       - cruz_backend
 
@@ -55,7 +53,7 @@ services:
       SERVICE_PORT: "8081"
     expose: ["8081"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/docs')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -67,6 +65,11 @@ services:
       SERVICE_MODULE: app.sc02_reservas.main:app
       SERVICE_PORT: "8082"
     expose: ["8082"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   sc03-pasajeros:
     <<: *service-common
@@ -75,6 +78,11 @@ services:
       SERVICE_MODULE: app.sc03_pasajeros.main:app
       SERVICE_PORT: "8083"
     expose: ["8083"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8083/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   sc04-pagos:
     <<: *service-common
@@ -83,6 +91,11 @@ services:
       SERVICE_MODULE: app.sc04_pagos.main:app
       SERVICE_PORT: "8084"
     expose: ["8084"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8084/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   sc05-pasajes:
     <<: *service-common
@@ -90,7 +103,15 @@ services:
       <<: *common-env
       SERVICE_MODULE: app.sc05_pasajes.main:app
       SERVICE_PORT: "8085"
+    volumes:
+      - cruz_data:/app/data
+      - pasajes_storage:/app/storage/pasajes
     expose: ["8085"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   sc06-mantenimiento:
     <<: *service-common
@@ -99,6 +120,11 @@ services:
       SERVICE_MODULE: app.sc06_mantenimiento.main:app
       SERVICE_PORT: "8086"
     expose: ["8086"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8086/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   gateway:
     image: nginx:alpine
@@ -112,22 +138,23 @@ services:
     expose: ["8080"]
     depends_on:
       sc01-viajes:
-        condition: service_started
+        condition: service_healthy
       sc02-reservas:
-        condition: service_started
+        condition: service_healthy
       sc03-pasajeros:
-        condition: service_started
+        condition: service_healthy
       sc04-pagos:
-        condition: service_started
+        condition: service_healthy
       sc05-pasajes:
-        condition: service_started
+        condition: service_healthy
       sc06-mantenimiento:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 15s
 
 networks:
   cruz_backend:
