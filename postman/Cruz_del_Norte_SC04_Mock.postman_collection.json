@@ -1,52 +1,201 @@
 {
   "info": {
-    "name": "Cruz del Norte - SC-04 Mock Gateway",
-    "description": "Demostración académica offline de pagos aprobados, rechazados y pendientes.",
+    "name": "Cruz del Norte - SC-04 Mock Gateway (Servidor)",
+    "description": "Demostración académica de SC-04 contra el Gateway publicado. Genera el JWT, crea una reserva válida y verifica todos los escenarios deterministas del simulador.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+  },
   "variable": [
-    {"key": "sc04BaseUrl", "value": "http://localhost:8084"},
-    {"key": "token", "value": ""}
+    {"key": "baseUrl", "value": "https://cruzdelnorte.duckdns.org"},
+    {"key": "jwtSecret", "value": ""},
+    {"key": "token", "value": ""},
+    {"key": "idViaje", "value": ""},
+    {"key": "idAsiento", "value": ""},
+    {"key": "importe", "value": ""},
+    {"key": "idReserva", "value": ""},
+    {"key": "idTransaccion", "value": ""},
+    {"key": "idemRechazado", "value": ""},
+    {"key": "idemPendiente", "value": ""},
+    {"key": "idemAprobado", "value": ""}
   ],
   "item": [
     {
-      "name": "1. Pago mock rechazado",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Authorization", "value": "Bearer {{token}}"},
-          {"key": "Idempotency-Key", "value": "postman-mock-rechazado-1"},
-          {"key": "Content-Type", "value": "application/json"}
-        ],
-        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
-        "url": "{{sc04BaseUrl}}/api/v1/pagos"
-      }
+      "name": "00 - Preparación",
+      "item": [
+        {
+          "name": "200 OK - Generar token académico",
+          "event": [
+            {"listen": "prerequest", "script": {"exec": [
+              "const jwtSecret = pm.variables.get('jwtSecret');",
+              "if (!jwtSecret) { throw new Error('Configure jwtSecret con el mismo JWT_SECRET_KEY de Coolify antes de ejecutar la colección.'); }",
+              "const cryptoJsLib = require('crypto-js');",
+              "const base64url = value => cryptoJsLib.enc.Base64.stringify(value).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+              "const now = Math.floor(Date.now() / 1000);",
+              "const header = base64url(cryptoJsLib.enc.Utf8.parse(JSON.stringify({alg: 'HS256', typ: 'JWT'})));",
+              "const payload = base64url(cryptoJsLib.enc.Utf8.parse(JSON.stringify({sub: 'postman-sc04', roles: ['ADMIN'], iat: now, exp: now + 7200})));",
+              "const signature = base64url(cryptoJsLib.HmacSHA256(header + '.' + payload, jwtSecret));",
+              "const generatedToken = header + '.' + payload + '.' + signature;",
+              "pm.collectionVariables.set('token', generatedToken);",
+              "if (pm.environment) { pm.environment.set('token', generatedToken); }",
+              "['idViaje','idAsiento','importe','idReserva','idTransaccion'].forEach(k => pm.collectionVariables.unset(k));",
+              "pm.collectionVariables.set('idemRechazado', 'sc04-rechazado-' + pm.variables.replaceIn('{{$guid}}'));",
+              "pm.collectionVariables.set('idemPendiente', 'sc04-pendiente-' + pm.variables.replaceIn('{{$guid}}'));",
+              "pm.collectionVariables.set('idemAprobado', 'sc04-aprobado-' + pm.variables.replaceIn('{{$guid}}'));"
+            ]}},
+            {"listen": "test", "script": {"exec": [
+              "pm.test('Status code es 200', () => pm.response.to.have.status(200));",
+              "pm.test('Gateway reporta estado ok', () => pm.expect(pm.response.json().status).to.eql('ok'));",
+              "pm.test('Token JWT generado y guardado', () => pm.expect(pm.collectionVariables.get('token').split('.')).to.have.lengthOf(3));"
+            ]}}
+          ],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/health"}
+        },
+        {
+          "name": "200 OK - Obtener viaje y tarifa",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('Existe un viaje disponible', () => pm.expect(body.viajes).to.be.an('array').that.is.not.empty);",
+            "const viaje = body.viajes[0];",
+            "pm.test('Existe un asiento disponible', () => pm.expect(viaje.asientosDisponibles).to.be.an('array').that.is.not.empty);",
+            "pm.collectionVariables.set('idViaje', viaje.idViaje);",
+            "pm.collectionVariables.set('idAsiento', viaje.asientosDisponibles[viaje.asientosDisponibles.length - 1]);",
+            "pm.collectionVariables.set('importe', viaje.tarifa);"
+          ]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2026-12-01"}
+        },
+        {
+          "name": "201 Created - Crear reserva para pagos",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Reserva queda TEMPORAL', () => pm.expect(body.estado).to.eql('TEMPORAL'));",
+            "pm.test('Reserva tiene identificador', () => pm.expect(body.idReserva).to.be.a('number'));",
+            "pm.collectionVariables.set('idReserva', body.idReserva);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsiento}},\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859621\", \"nombres\": \"Prueba\", \"apellidos\": \"SC04 Postman\"}\n}"},
+            "url": "{{baseUrl}}/api/v1/reservas"
+          }
+        }
+      ]
     },
     {
-      "name": "2. Pago mock pendiente",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Authorization", "value": "Bearer {{token}}"},
-          {"key": "Idempotency-Key", "value": "postman-mock-pendiente-1"},
-          {"key": "Content-Type", "value": "application/json"}
-        ],
-        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_pendiente\"\n}"},
-        "url": "{{sc04BaseUrl}}/api/v1/pagos"
-      }
-    },
-    {
-      "name": "3. Pago mock aprobado",
-      "request": {
-        "method": "POST",
-        "header": [
-          {"key": "Authorization", "value": "Bearer {{token}}"},
-          {"key": "Idempotency-Key", "value": "postman-mock-aprobado-1"},
-          {"key": "Content-Type", "value": "application/json"}
-        ],
-        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_aprobado\"\n}"},
-        "url": "{{sc04BaseUrl}}/api/v1/pagos"
-      }
+      "name": "01 - Escenarios MockPaymentProvider",
+      "item": [
+        {
+          "name": "201 Created - mock_rechazado",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Estado es RECHAZADO', () => pm.expect(body.estado).to.eql('RECHAZADO'));",
+            "pm.test('Identificador tiene formato MOCK-######', () => pm.expect(body.idTransaccion).to.match(/^MOCK-\\d{6}$/));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemRechazado}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "202 Accepted - mock_pendiente",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 202', () => pm.response.to.have.status(202));",
+            "const body = pm.response.json();",
+            "pm.test('Estado es PENDIENTE', () => pm.expect(body.estado).to.eql('PENDIENTE'));",
+            "pm.test('Identificador tiene formato MOCK-######', () => pm.expect(body.idTransaccion).to.match(/^MOCK-\\d{6}$/));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemPendiente}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_pendiente\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "502 Bad Gateway - mock_error",
+          "event": [
+            {"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemError', 'sc04-error-' + pm.variables.replaceIn('{{$guid}}'));"]}},
+            {"listen": "test", "script": {"exec": [
+              "pm.test('Status code es 502', () => pm.response.to.have.status(502));",
+              "const error = pm.response.json();",
+              "pm.test('Error canónico válido', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(502); });"
+            ]}}
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemError}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_error\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "504 Gateway Timeout - mock_timeout",
+          "event": [
+            {"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemTimeout', 'sc04-timeout-' + pm.variables.replaceIn('{{$guid}}'));"]}},
+            {"listen": "test", "script": {"exec": [
+              "pm.test('Status code es 504', () => pm.response.to.have.status(504));",
+              "const error = pm.response.json();",
+              "pm.test('Error canónico válido', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(504); });"
+            ]}}
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemTimeout}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_timeout\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "201 Created - mock_aprobado",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Estado es APROBADO', () => pm.expect(body.estado).to.eql('APROBADO'));",
+            "pm.test('Identificador tiene formato MOCK-######', () => pm.expect(body.idTransaccion).to.match(/^MOCK-\\d{6}$/));",
+            "pm.collectionVariables.set('idTransaccion', body.idTransaccion);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_aprobado\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "201 Created - Reintento con la misma Idempotency-Key",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 201', () => pm.response.to.have.status(201));",
+            "pm.test('No se duplica el pago', () => pm.expect(pm.response.json().idTransaccion).to.eql(pm.collectionVariables.get('idTransaccion')));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_aprobado\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        },
+        {
+          "name": "409 Conflict - Reutilización incorrecta de clave",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 409', () => pm.response.to.have.status(409));",
+            "const error = pm.response.json();",
+            "pm.test('Error canónico válido', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(409); });"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
+            "url": "{{baseUrl}}/api/v1/pagos"
+          }
+        }
+      ]
     }
   ]
 }

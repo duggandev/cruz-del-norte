@@ -1,12 +1,13 @@
 {
   "info": {
-    "name": "Cruz del Norte - SC-01 a SC-06",
-    "description": "Colección integral para el Gateway y los seis servicios. Ejecute las solicitudes en el orden definido.",
+    "name": "Cruz del Norte - Pruebas SC-01 a SC-06 (Servidor)",
+    "description": "Pruebas integrales para Postman Collection Runner contra el Gateway publicado. Ejecute las solicitudes en el orden definido.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
   "variable": [
     {"key": "baseUrl", "value": "https://cruzdelnorte.duckdns.org"},
+    {"key": "jwtSecret", "value": ""},
     {"key": "token", "value": ""},
     {"key": "idViaje", "value": ""},
     {"key": "idAsiento", "value": ""},
@@ -27,44 +28,105 @@
       "name": "00 - Infraestructura y OpenAPI",
       "item": [
         {
-          "name": "Gateway health",
+          "name": "200 OK - Generar token académico y comprobar Gateway",
           "event": [
             {"listen": "prerequest", "script": {"exec": [
+              "const jwtSecret = pm.variables.get('jwtSecret');",
+              "if (!jwtSecret) { throw new Error('Configure jwtSecret con el mismo JWT_SECRET_KEY de Coolify antes de ejecutar la colección.'); }",
+              "const cryptoJsLib = require('crypto-js');",
+              "const base64url = value => cryptoJsLib.enc.Base64.stringify(value).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+              "const now = Math.floor(Date.now() / 1000);",
+              "const header = base64url(cryptoJsLib.enc.Utf8.parse(JSON.stringify({alg: 'HS256', typ: 'JWT'})));",
+              "const payload = base64url(cryptoJsLib.enc.Utf8.parse(JSON.stringify({sub: 'postman-runner', roles: ['ADMIN'], iat: now, exp: now + 7200})));",
+              "const signature = base64url(cryptoJsLib.HmacSHA256(header + '.' + payload, jwtSecret));",
+              "const generatedToken = header + '.' + payload + '.' + signature;",
+              "pm.collectionVariables.set('token', generatedToken);",
+              "if (pm.environment) { pm.environment.set('token', generatedToken); }",
               "['idViaje','idAsiento','idAsientoLiberacion','importe','idReserva','idReservaLiberacion','idTransaccion','idTransaccionRechazada','idTransaccionPendiente','documentoUrl'].forEach(k => pm.collectionVariables.unset(k));",
               "pm.collectionVariables.set('idemRechazado', 'rechazado-' + pm.variables.replaceIn('{{$guid}}'));",
               "pm.collectionVariables.set('idemPendiente', 'pendiente-' + pm.variables.replaceIn('{{$guid}}'));",
               "pm.collectionVariables.set('idemAprobado', 'aprobado-' + pm.variables.replaceIn('{{$guid}}'));"
             ]}},
-            {"listen": "test", "script": {"exec": ["pm.test('Gateway saludable', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('ok'); });"]}}
+            {"listen": "test", "script": {"exec": [
+              "pm.test('Status code es 200', () => pm.response.to.have.status(200));",
+              "pm.test('Content-Type es JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+              "pm.test('Gateway reporta estado ok', () => pm.expect(pm.response.json().status).to.eql('ok'));",
+              "pm.test('Token JWT generado y guardado', () => pm.expect(pm.collectionVariables.get('token').split('.')).to.have.lengthOf(3));"
+            ]}}
           ],
           "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/health"}
         },
-        {"name": "OpenAPI SC-01", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc01.json"}},
-        {"name": "OpenAPI SC-02", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc02.json"}},
-        {"name": "OpenAPI SC-03", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc03.json"}},
-        {"name": "OpenAPI SC-04", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc04.json"}},
-        {"name": "OpenAPI SC-05", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc05.json"}},
-        {"name": "OpenAPI SC-06", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc06.json"}}
+        {
+          "name": "200 OK - OpenAPI SC-01 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc01.json"}
+        },
+        {
+          "name": "200 OK - OpenAPI SC-02 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc02.json"}
+        },
+        {
+          "name": "200 OK - OpenAPI SC-03 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc03.json"}
+        },
+        {
+          "name": "200 OK - OpenAPI SC-04 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc04.json"}
+        },
+        {
+          "name": "200 OK - OpenAPI SC-05 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc05.json"}
+        },
+        {
+          "name": "200 OK - OpenAPI SC-06 disponible",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Documento OpenAPI válido', () => pm.expect(pm.response.json()).to.have.property('openapi'));", "pm.test('Contiene rutas documentadas', () => pm.expect(Object.keys(pm.response.json().paths).length).to.be.above(0));"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/openapi/sc06.json"}
+        }
       ]
     },
     {
       "name": "01 - SC-01 Disponibilidad",
-      "item": [{
-        "name": "Consultar viajes",
-        "event": [{"listen": "test", "script": {"exec": [
-          "pm.test('Disponibilidad disponible', () => pm.expect([200,203]).to.include(pm.response.code));",
-          "const v = pm.response.json().viajes[0]; pm.expect(v.asientosDisponibles.length).to.be.above(1);",
-          "pm.collectionVariables.set('idViaje', v.idViaje); pm.collectionVariables.set('importe', v.tarifa);",
-          "pm.collectionVariables.set('idAsiento', v.asientosDisponibles[v.asientosDisponibles.length - 1]); pm.collectionVariables.set('idAsientoLiberacion', v.asientosDisponibles[v.asientosDisponibles.length - 2]);"
-        ]}}],
-        "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2026-12-01"}
-      }]
+      "item": [
+        {
+          "name": "200 OK - Consultar viajes existentes",
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Status code es 200', () => pm.response.to.have.status(200));",
+            "pm.test('Content-Type es JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+            "const body = pm.response.json();",
+            "pm.test('Retorna lista de viajes', () => pm.expect(body.viajes).to.be.an('array').that.is.not.empty);",
+            "const v = body.viajes[0];",
+            "pm.test('Hay al menos dos asientos disponibles', () => pm.expect(v.asientosDisponibles.length).to.be.above(1));",
+            "pm.collectionVariables.set('idViaje', v.idViaje); pm.collectionVariables.set('importe', v.tarifa);",
+            "pm.collectionVariables.set('idAsiento', v.asientosDisponibles[v.asientosDisponibles.length - 1]); pm.collectionVariables.set('idAsientoLiberacion', v.asientosDisponibles[v.asientosDisponibles.length - 2]);"
+          ]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2026-12-01"}
+        },
+        {
+          "name": "204 No Content - Fecha sin salidas programadas",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 204', () => pm.response.to.have.status(204));", "pm.test('Respuesta sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2035-12-31"}
+        },
+        {
+          "name": "400 Bad Request - Falta parámetro fecha",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 400', () => pm.response.to.have.status(400));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(400); });"]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica"}
+        },
+        {
+          "name": "401 Unauthorized - Solicitud sin token",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 401', () => pm.response.to.have.status(401));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(401); });"]}}],
+          "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2026-12-01"}
+        }
+      ]
     },
     {
       "name": "02 - SC-03 Pasajeros",
       "item": [{
-        "name": "Validar pasajero",
-        "event": [{"listen": "test", "script": {"exec": ["pm.test('Validación académica', () => { pm.response.to.have.status(203); pm.expect(pm.response.json().resultado).to.eql('CONFORME'); });"]}}],
+        "name": "203 Non-Authoritative - Validar pasajero académico",
+        "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 203', () => pm.response.to.have.status(203));", "pm.test('Content-Type es JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));", "pm.test('Resultado es CONFORME', () => pm.expect(pm.response.json().resultado).to.eql('CONFORME'));"]}}],
         "request": {
           "method": "POST",
           "header": [{"key": "Content-Type", "value": "application/json"}],
@@ -77,8 +139,8 @@
       "name": "03 - SC-02 Reservas",
       "item": [
         {
-          "name": "Crear reserva principal",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Reserva creada', () => pm.response.to.have.status(201)); pm.collectionVariables.set('idReserva', pm.response.json().idReserva);"]}}],
+          "name": "201 Created - Crear reserva principal",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.test('Reserva tiene identificador', () => pm.expect(body.idReserva).to.be.a('number'));", "pm.test('Reserva queda TEMPORAL', () => pm.expect(body.estado).to.eql('TEMPORAL'));", "pm.collectionVariables.set('idReserva', body.idReserva);"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsiento}},\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859621\", \"nombres\": \"Prueba\", \"apellidos\": \"Postman VPS\"}\n}"},
@@ -86,8 +148,8 @@
           }
         },
         {
-          "name": "Crear reserva para liberar",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Reserva auxiliar creada', () => pm.response.to.have.status(201)); pm.collectionVariables.set('idReservaLiberacion', pm.response.json().idReserva);"]}}],
+          "name": "201 Created - Crear reserva para liberar",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "pm.test('Reserva auxiliar tiene identificador', () => pm.expect(pm.response.json().idReserva).to.be.a('number'));", "pm.collectionVariables.set('idReservaLiberacion', pm.response.json().idReserva);"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsientoLiberacion}},\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859622\", \"nombres\": \"Prueba\", \"apellidos\": \"Liberación\"}\n}"},
@@ -95,8 +157,8 @@
           }
         },
         {
-          "name": "Liberar reserva",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Reserva liberada', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().estado).to.eql('CANCELADA'); });"]}}],
+          "name": "200 OK - Liberar reserva",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Reserva queda CANCELADA', () => pm.expect(pm.response.json().estado).to.eql('CANCELADA'));"]}}],
           "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/reservas/{{idReservaLiberacion}}/liberacion"}
         }
       ]
@@ -105,8 +167,8 @@
       "name": "04 - SC-04 Pagos mock",
       "item": [
         {
-          "name": "Pago rechazado",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pago rechazado', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().estado).to.eql('RECHAZADO'); }); pm.collectionVariables.set('idTransaccionRechazada', pm.response.json().idTransaccion);"]}}],
+          "name": "201 Created - Pago rechazado",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.test('Estado es RECHAZADO', () => pm.expect(body.estado).to.eql('RECHAZADO'));", "pm.test('Transacción usa prefijo MOCK', () => pm.expect(body.idTransaccion).to.match(/^MOCK-/));", "pm.collectionVariables.set('idTransaccionRechazada', body.idTransaccion);"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemRechazado}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
@@ -114,8 +176,8 @@
           }
         },
         {
-          "name": "Pago pendiente",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pago pendiente', () => { pm.response.to.have.status(202); pm.expect(pm.response.json().estado).to.eql('PENDIENTE'); }); pm.collectionVariables.set('idTransaccionPendiente', pm.response.json().idTransaccion);"]}}],
+          "name": "202 Accepted - Pago pendiente",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 202', () => pm.response.to.have.status(202));", "const body = pm.response.json();", "pm.test('Estado es PENDIENTE', () => pm.expect(body.estado).to.eql('PENDIENTE'));", "pm.test('Transacción usa prefijo MOCK', () => pm.expect(body.idTransaccion).to.match(/^MOCK-/));", "pm.collectionVariables.set('idTransaccionPendiente', body.idTransaccion);"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemPendiente}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_pendiente\"\n}"},
@@ -123,8 +185,8 @@
           }
         },
         {
-          "name": "Error simulado",
-          "event": [{"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemError', 'error-' + pm.variables.replaceIn('{{$guid}}'));"]}}, {"listen": "test", "script": {"exec": ["pm.test('Error controlado', () => pm.response.to.have.status(502));"]}}],
+          "name": "502 Bad Gateway - Error simulado",
+          "event": [{"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemError', 'error-' + pm.variables.replaceIn('{{$guid}}'));"]}}, {"listen": "test", "script": {"exec": ["pm.test('Status code es 502', () => pm.response.to.have.status(502));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(502); });"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemError}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_error\"\n}"},
@@ -132,8 +194,8 @@
           }
         },
         {
-          "name": "Timeout simulado",
-          "event": [{"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemTimeout', 'timeout-' + pm.variables.replaceIn('{{$guid}}'));"]}}, {"listen": "test", "script": {"exec": ["pm.test('Timeout controlado', () => pm.response.to.have.status(504));"]}}],
+          "name": "504 Gateway Timeout - Timeout simulado",
+          "event": [{"listen": "prerequest", "script": {"exec": ["pm.variables.set('idemTimeout', 'timeout-' + pm.variables.replaceIn('{{$guid}}'));"]}}, {"listen": "test", "script": {"exec": ["pm.test('Status code es 504', () => pm.response.to.have.status(504));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(504); });"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemTimeout}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_timeout\"\n}"},
@@ -141,10 +203,13 @@
           }
         },
         {
-          "name": "Pago aprobado",
+          "name": "201 Created - Pago aprobado",
           "event": [{"listen": "test", "script": {"exec": [
-            "pm.test('Pago aprobado', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().estado).to.eql('APROBADO'); pm.expect(pm.response.json().idTransaccion).to.match(/^MOCK-/); });",
-            "pm.collectionVariables.set('idTransaccion', pm.response.json().idTransaccion);"
+            "pm.test('Status code es 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Estado es APROBADO', () => pm.expect(body.estado).to.eql('APROBADO'));",
+            "pm.test('Transacción usa prefijo MOCK', () => pm.expect(body.idTransaccion).to.match(/^MOCK-/));",
+            "pm.collectionVariables.set('idTransaccion', body.idTransaccion);"
           ]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
@@ -153,8 +218,8 @@
           }
         },
         {
-          "name": "Reintento idempotente",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Misma transacción', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().idTransaccion).to.eql(pm.collectionVariables.get('idTransaccion')); });"]}}],
+          "name": "201 Created - Reintento idempotente",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "pm.test('Retorna la misma transacción', () => pm.expect(pm.response.json().idTransaccion).to.eql(pm.collectionVariables.get('idTransaccion')));"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_aprobado\"\n}"},
@@ -162,8 +227,8 @@
           }
         },
         {
-          "name": "Reutilización incorrecta de clave",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Conflicto esperado', () => pm.response.to.have.status(409));"]}}],
+          "name": "409 Conflict - Reutilización incorrecta de clave",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 409', () => pm.response.to.have.status(409));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(409); });"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Idempotency-Key", "value": "{{idemAprobado}}"}, {"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"importe\": {{importe}},\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
@@ -176,8 +241,8 @@
       "name": "05 - SC-05 Pasajes",
       "item": [
         {
-          "name": "Impedir emisión con pago rechazado",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pago rechazado no emite pasaje', () => pm.response.to.have.status(422));"]}}],
+          "name": "422 Unprocessable - Impedir emisión con pago rechazado",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 422', () => pm.response.to.have.status(422));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(422); });"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"idTransaccion\": \"{{idTransaccionRechazada}}\"\n}"},
@@ -185,8 +250,8 @@
           }
         },
         {
-          "name": "Impedir emisión con pago pendiente",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pago pendiente no emite pasaje', () => pm.response.to.have.status(422));"]}}],
+          "name": "422 Unprocessable - Impedir emisión con pago pendiente",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 422', () => pm.response.to.have.status(422));", "const error = pm.response.json();", "pm.test('Estructura de error canónico válida', () => { pm.expect(error).to.have.all.keys('codigo','error','mensaje'); pm.expect(error.codigo).to.eql(422); });"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"idTransaccion\": \"{{idTransaccionPendiente}}\"\n}"},
@@ -194,8 +259,8 @@
           }
         },
         {
-          "name": "Emitir pasaje",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pasaje emitido', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().estado).to.eql('EMITIDO'); }); pm.collectionVariables.set('documentoUrl', pm.response.json().documentoUrl);"]}}],
+          "name": "201 Created - Emitir pasaje con pago aprobado",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.test('Pasaje queda EMITIDO', () => pm.expect(body.estado).to.eql('EMITIDO'));", "pm.test('Respuesta contiene URL del PDF', () => pm.expect(body.documentoUrl).to.be.a('string').and.not.empty);", "pm.collectionVariables.set('documentoUrl', pm.collectionVariables.get('baseUrl') + '/documentos/' + body.codigo + '.pdf');"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {"mode": "raw", "raw": "{\n  \"idReserva\": {{idReserva}},\n  \"idTransaccion\": \"{{idTransaccion}}\"\n}"},
@@ -203,8 +268,8 @@
           }
         },
         {
-          "name": "Descargar PDF",
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('PDF disponible', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'); });"]}}],
+          "name": "200 OK - Descargar PDF del pasaje",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Content-Type es PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));", "pm.test('Documento tiene contenido', () => pm.expect(pm.response.size().body).to.be.above(100));"]}}],
           "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{documentoUrl}}"}
         }
       ]
@@ -212,13 +277,13 @@
     {
       "name": "06 - SC-06 Mantenimiento",
       "item": [{
-        "name": "Programar mantenimiento",
+        "name": "201 Created - Programar mantenimiento",
         "event": [
           {"listen": "prerequest", "script": {"exec": [
             "const d = new Date(); d.setUTCDate(d.getUTCDate() + 700 + Math.floor(Math.random() * 200));",
             "pm.variables.set('fechaMantenimiento', d.toISOString().slice(0,10)); pm.variables.set('idVehiculo', 101 + Math.floor(Math.random() * 59));"
           ]}},
-          {"listen": "test", "script": {"exec": ["pm.test('Mantenimiento programado', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().estado).to.eql('PROGRAMADO'); });"]}}
+          {"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "pm.test('Estado es PROGRAMADO', () => pm.expect(pm.response.json().estado).to.eql('PROGRAMADO'));", "pm.test('Programación tiene código', () => pm.expect(pm.response.json().codigo).to.be.a('string').and.not.empty);"]}}
         ],
         "request": {
           "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
