@@ -1,0 +1,10 @@
+from fastapi import FastAPI
+
+from app.shared.errors import enforce_media_types, install_error_handlers
+
+
+def create_app(title: str, version: str = "1.0.0") -> FastAPI:
+    app = FastAPI(title=title, version=version)
+    app.middleware("http")(enforce_media_types)
+    install_error_handlers(app)
+    return app

@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "Cruz del Norte - SC-04 Mock Gateway",
+    "description": "Demostración académica offline de pagos aprobados, rechazados y pendientes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "sc04BaseUrl", "value": "http://localhost:8084"},
+    {"key": "token", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "1. Pago mock rechazado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Idempotency-Key", "value": "postman-mock-rechazado-1"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_rechazado\"\n}"},
+        "url": "{{sc04BaseUrl}}/api/v1/pagos"
+      }
+    },
+    {
+      "name": "2. Pago mock pendiente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Idempotency-Key", "value": "postman-mock-pendiente-1"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_pendiente\"\n}"},
+        "url": "{{sc04BaseUrl}}/api/v1/pagos"
+      }
+    },
+    {
+      "name": "3. Pago mock aprobado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Idempotency-Key", "value": "postman-mock-aprobado-1"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"idReserva\": 5501,\n  \"importe\": 65.00,\n  \"medioPago\": \"PASARELA\",\n  \"tokenPasarela\": \"mock_aprobado\"\n}"},
+        "url": "{{sc04BaseUrl}}/api/v1/pagos"
+      }
+    }
+  ]
+}

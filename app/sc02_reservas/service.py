@@ -1,0 +1,99 @@
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.orm import Session
+
+from app.sc02_reservas import repository
+from app.sc02_reservas.schemas import ReservaRequest
+from app.shared.config import settings
+from app.shared.errors import ApiError
+from app.shared.models import Reserva
+
+
+LIMA = ZoneInfo("America/Lima")
+
+
+def _local_naive(value: datetime) -> datetime:
+    return value.astimezone(LIMA).replace(tzinfo=None)
+
+
+def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
+    if data.id_canal == 4:
+        raise ApiError(501, "Las plataformas externas todavía no están implementadas.")
+    if not data.pasajero.dni.isdigit() or len(data.pasajero.dni) != 8:
+        raise ApiError(422, "El DNI del pasajero debe contener exactamente ocho números.")
+    try:
+        db.execute(text("BEGIN IMMEDIATE"))
+        now = datetime.now(LIMA)
+        repository.expirar_reservas(db, _local_naive(now))
+        viaje = repository.get_viaje(db, data.id_viaje)
+        if not viaje:
+            raise ApiError(404, "No encontramos el viaje solicitado.")
+        if viaje.estado not in {"PROGRAMADO", "DISPONIBLE"}:
+            raise ApiError(409, "El viaje no admite nuevas reservas.")
+        asiento = repository.get_asiento(db, data.id_viaje, data.id_asiento)
+        if not asiento:
+            raise ApiError(404, "El asiento no existe para el viaje indicado.")
+        if asiento.estado != "DISPONIBLE":
+            raise ApiError(409, "El asiento no está disponible.")
+        if repository.get_bloqueo(db, data.id_viaje, data.id_asiento):
+            raise ApiError(409, "El asiento ya se encuentra reservado.")
+        expiration = now + timedelta(minutes=settings.reservation_ttl_minutes)
+        reserva = Reserva(
+            id_viaje=data.id_viaje,
+            id_asiento=data.id_asiento,
+            id_canal=data.id_canal,
+            pasajero_dni=data.pasajero.dni,
+            pasajero_nombres=data.pasajero.nombres.strip(),
+            pasajero_apellidos=data.pasajero.apellidos.strip(),
+            estado="TEMPORAL",
+            vencimiento=_local_naive(expiration),
+        )
+        if not reserva.pasajero_nombres or not reserva.pasajero_apellidos:
+            raise ApiError(422, "Nombres y apellidos son obligatorios.")
+        db.add(reserva)
+        db.flush()
+        body = {
+            "idReserva": reserva.id_reserva,
+            "idViaje": reserva.id_viaje,
+            "idAsiento": reserva.id_asiento,
+            "estado": reserva.estado,
+            "vencimiento": expiration.isoformat(),
+        }
+        db.commit()
+        return body
+    except ApiError:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        raise ApiError(409, "El asiento fue reservado por otra solicitud.") from exc
+    except OperationalError as exc:
+        db.rollback()
+        raise ApiError(503, "La base de datos está temporalmente ocupada.") from exc
+
+
+def liberar_reserva(db: Session, id_reserva: int) -> dict:
+    try:
+        db.execute(text("BEGIN IMMEDIATE"))
+        now = datetime.now(LIMA)
+        repository.expirar_reservas(db, _local_naive(now))
+        reserva = repository.get_reserva(db, id_reserva)
+        if not reserva:
+            raise ApiError(404, "No encontramos la reserva solicitada.")
+        if repository.tiene_pago_aprobado(db, id_reserva):
+            raise ApiError(409, "No se puede liberar una reserva con pago aprobado.")
+        if reserva.estado == "CONFIRMADA":
+            raise ApiError(409, "No se puede liberar una reserva confirmada.")
+        if reserva.estado == "TEMPORAL":
+            reserva.estado = "CANCELADA"
+        db.commit()
+        return {"idReserva": reserva.id_reserva, "estado": reserva.estado}
+    except ApiError:
+        db.rollback()
+        raise
+    except OperationalError as exc:
+        db.rollback()
+        raise ApiError(503, "La base de datos está temporalmente ocupada.") from exc

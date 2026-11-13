@@ -1,0 +1,37 @@
+# Secretos y configuración local
+.env
+.env.local
+.env.*.local
+
+# Entornos virtuales
+env/
+.venv/
+
+# Python y pruebas
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Base de datos local y archivos temporales de SQLite
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Archivos generados por la aplicación
+storage/pasajes/*.pdf
+tests/.runtime/
+
+# Logs y temporales
+*.log
+*.tmp
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

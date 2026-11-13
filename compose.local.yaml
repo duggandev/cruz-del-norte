@@ -1,0 +1,17 @@
+services:
+  gateway:
+    ports: ["8080:8080"]
+  sc01-viajes:
+    ports: ["8081:8081"]
+  sc02-reservas:
+    ports: ["8082:8082"]
+  sc03-pasajeros:
+    ports: ["8083:8083"]
+  sc04-pagos:
+    ports: ["8084:8084"]
+  sc05-pasajes:
+    ports: ["8085:8085"]
+    environment:
+      PUBLIC_PASAJES_URL: http://localhost:8080/documentos
+  sc06-mantenimiento:
+    ports: ["8086:8086"]
