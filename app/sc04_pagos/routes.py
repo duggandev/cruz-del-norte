@@ -22,6 +22,14 @@ def listar_pagos_admin(db: Annotated[Session, Depends(get_db)], _principal: Anno
     if estado: query = query.where(Pago.estado == estado)
     return [{"id": p.id_pago, "codigo": p.id_transaccion, "idTransaccion": p.id_transaccion, "idReserva": p.id_reserva, "monto": p.importe_centavos / 100, "importe": p.importe_centavos / 100, "medioPago": p.medio_pago, "estado": p.estado, "createdAt": p.created_at} for p in db.scalars(query).all()]
 
+@router.get("/pagos/{id_reserva}/aprobado", operation_id="consultarPagoAprobadoReserva", responses={404: {"model": ErrorResponse}})
+def consultar_pago_aprobado(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS"))]):
+    pago = db.scalar(select(Pago).where(Pago.id_reserva == id_reserva, Pago.estado == "APROBADO"))
+    if not pago:
+        from app.shared.errors import ApiError
+        raise ApiError(404, "La reserva no tiene un pago aprobado.")
+    return {"idPago": pago.id_pago, "idReserva": pago.id_reserva, "idTransaccion": pago.id_transaccion, "importe": pago.importe_centavos / 100, "medioPago": pago.medio_pago, "estado": pago.estado}
+
 @router.get("/pagos/{id_reserva}/reembolso", operation_id="cotizarReembolso", responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}})
 def get_reembolso(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS"))]):
     row = db.execute(select(Reserva, Viaje).join(Viaje, Reserva.id_viaje == Viaje.id_viaje).where(Reserva.id_reserva == id_reserva)).one_or_none()
