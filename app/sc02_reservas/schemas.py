@@ -21,6 +21,7 @@ class ReservaRequest(BaseModel):
     id_asiento: int = Field(alias="idAsiento", gt=0)
     id_canal: int = Field(alias="idCanal", ge=1, le=4)
     pasajero: PasajeroReserva
+    tipo_asiento: str | None = Field(default=None, alias="tipoAsiento", pattern="^(VIP|PREFERENCIAL|ESTANDAR)$")
 
 
 class ReservaResponse(BaseModel):
@@ -35,6 +36,7 @@ class ReservaMultipleItem(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     id_asiento: int = Field(alias="idAsiento", gt=0)
     pasajero: PasajeroReserva
+    tipo_asiento: str | None = Field(default=None, alias="tipoAsiento", pattern="^(VIP|PREFERENCIAL|ESTANDAR)$")
 
 class ReservaMultipleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

@@ -9,11 +9,16 @@ from app.sc01_viajes.service import consultar_disponibilidad
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
-from app.shared.models import Viaje
+from app.shared.models import Viaje, AsientoViaje
 from sqlalchemy import select
+from app.sc02_reservas.service import tipo_asiento
 
 
 router = APIRouter(prefix="/api/v1", tags=["Disponibilidad de viajes"])
+
+@router.get("/viajes/{id_viaje}/asientos", operation_id="consultarMapaAsientos")
+def get_mapa_asientos(id_viaje: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS", "EMISION", "MANTENIMIENTO"))]):
+    return {"idViaje": id_viaje, "asientos": [{"idAsiento": a.id_asiento, "tipo": tipo_asiento(a.id_asiento), "estado": a.estado} for a in db.scalars(select(AsientoViaje).where(AsientoViaje.id_viaje == id_viaje).order_by(AsientoViaje.id_asiento)).all()]}
 
 @router.get("/admin/viajes", operation_id="listarViajesAdministracion")
 def listar_viajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))], estado: str | None = None, fecha: date | None = None):

@@ -14,12 +14,19 @@ from app.shared.models import Reserva
 
 LIMA = ZoneInfo("America/Lima")
 
+def tipo_asiento(id_asiento: int) -> str:
+    if id_asiento <= 4: return "VIP"
+    if id_asiento <= 12: return "PREFERENCIAL"
+    return "ESTANDAR"
+
 
 def _local_naive(value: datetime) -> datetime:
     return value.astimezone(LIMA).replace(tzinfo=None)
 
 
 def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
+    if data.tipo_asiento and data.tipo_asiento != tipo_asiento(data.id_asiento):
+        raise ApiError(422, f"El asiento {data.id_asiento} pertenece a la categoria {tipo_asiento(data.id_asiento)}.")
     if data.pasajero.fecha_nacimiento:
         hoy = date.today()
         edad = hoy.year - data.pasajero.fecha_nacimiento.year - ((hoy.month, hoy.day) < (data.pasajero.fecha_nacimiento.month, data.pasajero.fecha_nacimiento.day))
@@ -90,7 +97,7 @@ def registrar_reservas_multiples(db: Session, data: ReservaMultipleRequest) -> d
         raise ApiError(422, "No se puede repetir un asiento en la misma compra.")
     reservas = []
     for item in data.pasajeros:
-        reservas.append(registrar_reserva(db, ReservaRequest(idViaje=data.id_viaje, idAsiento=item.id_asiento, idCanal=data.id_canal, pasajero=item.pasajero)))
+        reservas.append(registrar_reserva(db, ReservaRequest(idViaje=data.id_viaje, idAsiento=item.id_asiento, idCanal=data.id_canal, pasajero=item.pasajero, tipoAsiento=item.tipo_asiento)))
     return {"reservas": reservas, "cantidad": len(reservas)}
 
 
