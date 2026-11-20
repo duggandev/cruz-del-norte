@@ -22,6 +22,7 @@ from app.sc04_pagos.providers.base import (
 from app.sc04_pagos.schemas import MedioPago, PagoRequest
 from app.shared.errors import ApiError
 from app.shared.models import IdempotenciaPago, Pago
+from app.shared.pricing import seat_fare_centavos
 
 
 def _centavos(importe: Decimal) -> int:
@@ -114,8 +115,9 @@ def procesar_pago(db: Session, data: PagoRequest, key: str) -> tuple[dict, int]:
                 reserva.estado = "VENCIDA"
             raise ApiError(410, "La reserva ha vencido.")
         importe_centavos = _centavos(data.importe)
-        if importe_centavos != viaje.tarifa_centavos:
-            raise ApiError(422, "El importe no coincide con la tarifa del viaje.")
+        importe_esperado = seat_fare_centavos(viaje.tarifa_centavos, reserva.id_asiento)
+        if importe_centavos != importe_esperado:
+            raise ApiError(422, f"El importe no coincide con la tarifa del asiento ({importe_esperado / 100:.2f}).")
         if repository.get_pago_aprobado(db, data.id_reserva):
             raise ApiError(409, "La reserva ya tiene un pago aprobado.")
 
