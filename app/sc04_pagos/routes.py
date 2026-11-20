@@ -8,13 +8,19 @@ from app.sc04_pagos.service import procesar_pago
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
-from app.shared.models import Reserva, Viaje
+from app.shared.models import Reserva, Viaje, Pago
 from sqlalchemy import select
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 
 router = APIRouter(prefix="/api/v1", tags=["Pagos"])
+
+@router.get("/admin/pagos", operation_id="listarPagosAdministracion")
+def listar_pagos_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "CAJA"))], estado: str | None = None):
+    query = select(Pago).order_by(Pago.created_at.desc())
+    if estado: query = query.where(Pago.estado == estado)
+    return [{"idTransaccion": p.id_transaccion, "idReserva": p.id_reserva, "importe": p.importe_centavos / 100, "medioPago": p.medio_pago, "estado": p.estado, "createdAt": p.created_at} for p in db.scalars(query).all()]
 
 @router.get("/pagos/{id_reserva}/reembolso", operation_id="cotizarReembolso", responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}})
 def get_reembolso(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("CAJA"))]):

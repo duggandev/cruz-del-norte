@@ -8,9 +8,17 @@ from app.sc05_pasajes.service import emitir_pasaje
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
+from app.shared.models import Pasaje
+from sqlalchemy import select
 
 
 router = APIRouter(prefix="/api/v1", tags=["Pasajes"])
+
+@router.get("/admin/pasajes", operation_id="listarPasajesAdministracion")
+def listar_pasajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "EMISION"))], estado: str | None = None):
+    query = select(Pasaje).order_by(Pasaje.fecha_emision.desc())
+    if estado: query = query.where(Pasaje.estado == estado)
+    return [{"codigo": p.codigo, "idReserva": p.id_reserva, "estado": p.estado, "fechaEmision": p.fecha_emision, "documentoUrl": p.documento_url} for p in db.scalars(query).all()]
 
 
 @router.post(

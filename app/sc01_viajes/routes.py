@@ -9,9 +9,18 @@ from app.sc01_viajes.service import consultar_disponibilidad
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
+from app.shared.models import Viaje
+from sqlalchemy import select
 
 
 router = APIRouter(prefix="/api/v1", tags=["Disponibilidad de viajes"])
+
+@router.get("/admin/viajes", operation_id="listarViajesAdministracion")
+def listar_viajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))], estado: str | None = None, fecha: date | None = None):
+    query = select(Viaje).order_by(Viaje.fecha, Viaje.hora_salida)
+    if estado: query = query.where(Viaje.estado == estado)
+    if fecha: query = query.where(Viaje.fecha == fecha)
+    return [{"idViaje": v.id_viaje, "origen": v.origen, "destino": v.destino, "fecha": v.fecha, "horaSalida": v.hora_salida, "tarifa": v.tarifa_centavos / 100, "estado": v.estado} for v in db.scalars(query).all()]
 
 
 @router.get(
