@@ -9,7 +9,7 @@ from app.shared import models  # noqa: F401
 
 
 config = context.config
-config.set_main_option("sqlalchemy.url", f"sqlite:///{settings.database_file.as_posix()}")
+config.set_main_option("sqlalchemy.url", settings.database_url or f"sqlite:///{settings.database_file.as_posix()}")
 if config.config_file_name:
     fileConfig(config.config_file_name)
 target_metadata = Base.metadata

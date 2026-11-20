@@ -34,7 +34,7 @@ def get_disponibilidad(
     destino: Annotated[str, Query(min_length=1, max_length=120)],
     fecha: date,
     db: Annotated[Session, Depends(get_db)],
-    _principal: Annotated[Principal, Depends(require_roles("CAJA", "EMISION", "MANTENIMIENTO"))],
+    _principal: Annotated[Principal, Depends(require_roles("VENTAS", "EMISION", "MANTENIMIENTO"))],
 ):
     result = consultar_disponibilidad(db, origen, destino, fecha)
     return result if result is not None else Response(status_code=204)

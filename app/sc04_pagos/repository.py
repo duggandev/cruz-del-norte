@@ -21,5 +21,5 @@ def get_pago_aprobado(db: Session, id_reserva: int) -> Pago | None:
 def get_next_mock_sequence(db: Session) -> int:
     return int(db.scalar(text(
         "SELECT COALESCE(MAX(CAST(SUBSTR(id_transaccion, 6) AS INTEGER)), 0) + 1 "
-        "FROM pagos WHERE id_transaccion GLOB 'MOCK-[0-9][0-9][0-9][0-9][0-9][0-9]'"
+        "FROM pagos WHERE id_transaccion LIKE 'MOCK-%'"
     )))

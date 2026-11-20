@@ -11,7 +11,7 @@ def _users() -> dict:
     if raw:
         try: return json.loads(raw)
         except json.JSONDecodeError: pass
-    return {"admin": {"password": "admin-demo", "roles": ["ADMIN"]}, "caja": {"password": "caja-demo", "roles": ["CAJA"]}, "emision": {"password": "emision-demo", "roles": ["EMISION"]}, "mantenimiento": {"password": "mantenimiento-demo", "roles": ["MANTENIMIENTO"]}}
+    return {"admin": {"password": "admin-demo", "roles": ["ADMIN"]}, "ventas": {"password": "ventas-demo", "roles": ["VENTAS"]}, "emision": {"password": "emision-demo", "roles": ["EMISION"]}, "mantenimiento": {"password": "mantenimiento-demo", "roles": ["MANTENIMIENTO"]}}
 
 @router.post("/auth/login", response_model=LoginResponse, operation_id="iniciarSesion")
 def login(data: LoginRequest):
@@ -23,4 +23,4 @@ def login(data: LoginRequest):
 
 @router.get("/auth/roles", operation_id="listarRoles")
 def roles():
-    return {"roles": ["ADMIN", "CAJA", "EMISION", "MANTENIMIENTO"], "descripcion": "Roles disponibles en Cruz del Norte"}
+    return {"roles": ["ADMIN", "VENTAS", "EMISION", "MANTENIMIENTO"], "descripcion": "Roles disponibles en Cruz del Norte"}

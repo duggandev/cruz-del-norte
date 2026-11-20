@@ -10,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     app_env: str = "development"
     database_path: str = "./data/cruz_del_norte.db"
+    database_url: str | None = None
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     payment_provider: str = "culqi"

@@ -27,16 +27,18 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Cambie `JWT_SECRET_KEY` en `.env` por un secreto aleatorio de al menos 32 bytes. `RESERVATION_TTL_MINUTES` controla la duración de las reservas temporales.
+Cambie `JWT_SECRET_KEY` y `POSTGRES_PASSWORD` en `.env` por secretos seguros. `RESERVATION_TTL_MINUTES` controla la duración de las reservas temporales.
 
 ## Base de datos y migraciones
 
-Los seis servicios leen el mismo `DATABASE_PATH`. SQLite se configura con claves foráneas, WAL, `busy_timeout=5000` y sincronización `NORMAL`.
+Los seis servicios y AUTH leen el mismo PostgreSQL mediante `DATABASE_URL`. Compose usa PostgreSQL 16 con volumen persistente, migraciones Alembic y healthcheck. `DATABASE_PATH` queda como fallback para pruebas locales SQLite.
 
 ```powershell
 alembic upgrade head
 python scripts\seed_dev.py
 ```
+
+En Compose, PostgreSQL se inicia automáticamente y los servicios usan `DATABASE_URL`. Para una instancia externa, configure por ejemplo `DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/cruz_del_norte` antes de ejecutar `alembic upgrade head`. La migración crea el esquema nuevo; los datos históricos de SQLite deben exportarse/importarse mediante un proceso ETL controlado.
 
 `python scripts\init_db.py` también ejecuta `alembic upgrade head`. El sembrado es idempotente y agrega el viaje, la reserva y el vehículo originales, además de 40 asientos para el viaje 1021. También agrega el viaje demostrativo 1022, Chimbote–Lima del 15 de diciembre de 2026, con 40 asientos.
 
@@ -65,7 +67,7 @@ No se añadió un endpoint de autenticación:
 python scripts\generate_dev_token.py --roles ADMIN
 ```
 
-Roles provisionales: `ADMIN`, `CAJA`, `EMISION` y `MANTENIMIENTO`.
+Roles provisionales: `ADMIN`, `VENTAS`, `EMISION` y `MANTENIMIENTO`.
 
 ## Ejecución local
 

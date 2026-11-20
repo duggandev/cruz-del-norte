@@ -86,7 +86,7 @@ def procesar_pago(db: Session, data: PagoRequest, key: str) -> tuple[dict, int]:
         raise ApiError(400, "Idempotency-Key es obligatorio y debe tener hasta 200 caracteres.")
     request_hash = _hash_request(data)
     try:
-        db.execute(text("BEGIN IMMEDIATE"))
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
         previous = repository.get_idempotencia(db, key)
         if previous:
             if previous.request_hash != request_hash:

@@ -17,7 +17,7 @@ LIMA = ZoneInfo("America/Lima")
 
 def programar(db: Session, data: ProgramacionRequest) -> dict:
     try:
-        db.execute(text("BEGIN IMMEDIATE"))
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
         if not repository.get_vehiculo(db, data.id_vehiculo):
             raise ApiError(404, "No encontramos el vehículo solicitado.")
         if data.fecha < datetime.now(LIMA).date():

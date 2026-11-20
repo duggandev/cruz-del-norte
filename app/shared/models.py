@@ -44,6 +44,7 @@ class Reserva(Base):
             "id_asiento",
             unique=True,
             sqlite_where=text("estado IN ('TEMPORAL','CONFIRMADA')"),
+            postgresql_where=text("estado IN ('TEMPORAL','CONFIRMADA')"),
         ),
     )
     id_reserva: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -75,7 +76,7 @@ class Pago(Base):
         CheckConstraint("medio_pago IN ('EFECTIVO','POS','PASARELA','TERCERO')", name="ck_pagos_medio"),
         CheckConstraint("estado IN ('APROBADO','RECHAZADO','PENDIENTE')", name="ck_pagos_estado"),
         CheckConstraint("importe_centavos > 0", name="ck_pagos_importe"),
-        Index("uq_pago_aprobado_reserva", "id_reserva", unique=True, sqlite_where=text("estado = 'APROBADO'")),
+        Index("uq_pago_aprobado_reserva", "id_reserva", unique=True, sqlite_where=text("estado = 'APROBADO'"), postgresql_where=text("estado = 'APROBADO'")),
     )
     id_pago: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     id_transaccion: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
@@ -120,7 +121,7 @@ class ProgramacionMantenimiento(Base):
         CheckConstraint("kilometraje >= 0", name="ck_programacion_kilometraje"),
         CheckConstraint("tipo IN ('PREVENTIVO','CORRECTIVO')", name="ck_programacion_tipo"),
         CheckConstraint("estado IN ('PROGRAMADO','CANCELADO')", name="ck_programacion_estado"),
-        Index("uq_programacion_activa", "id_vehiculo", "fecha", unique=True, sqlite_where=text("estado = 'PROGRAMADO'")),
+        Index("uq_programacion_activa", "id_vehiculo", "fecha", unique=True, sqlite_where=text("estado = 'PROGRAMADO'"), postgresql_where=text("estado = 'PROGRAMADO'")),
     )
     id_programacion: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     codigo: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)

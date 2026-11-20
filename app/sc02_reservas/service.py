@@ -34,7 +34,7 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
     if not data.pasajero.dni.isdigit() or len(data.pasajero.dni) != 8:
         raise ApiError(422, "El DNI del pasajero debe contener exactamente ocho números.")
     try:
-        db.execute(text("BEGIN IMMEDIATE"))
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
         now = datetime.now(LIMA)
         repository.expirar_reservas(db, _local_naive(now))
         viaje = repository.get_viaje(db, data.id_viaje)
@@ -86,7 +86,7 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
 
 def liberar_reserva(db: Session, id_reserva: int) -> dict:
     try:
-        db.execute(text("BEGIN IMMEDIATE"))
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
         now = datetime.now(LIMA)
         repository.expirar_reservas(db, _local_naive(now))
         reserva = repository.get_reserva(db, id_reserva)

@@ -61,7 +61,7 @@ def _crear_pdf(path: Path, codigo: str, reserva, viaje, pago) -> None:
 def emitir_pasaje(db: Session, data: PasajeRequest) -> tuple[dict, Path]:
     pdf_path: Path | None = None
     try:
-        db.execute(text("BEGIN IMMEDIATE"))
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
         row = repository.get_reserva_con_viaje(db, data.id_reserva)
         if not row:
             raise ApiError(404, "No encontramos la reserva solicitada.")

@@ -16,13 +16,13 @@ router = APIRouter(prefix="/api/v1", tags=["Reservas"])
 errors = {code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 422, 429, 500, 501, 503)}
 
 @router.get("/admin/reservas", operation_id="listarReservasAdministracion")
-def listar_reservas_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "CAJA"))], estado: str | None = None):
+def listar_reservas_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS"))], estado: str | None = None):
     query = select(Reserva).order_by(Reserva.created_at.desc())
     if estado: query = query.where(Reserva.estado == estado)
     return [{"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "estado": r.estado, "dni": r.pasajero_dni, "vencimiento": r.vencimiento} for r in db.scalars(query).all()]
 
 @router.get("/admin/reservas/{id_reserva}", operation_id="consultarReservaAdministracion", responses=errors)
-def consultar_reserva_admin(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "CAJA"))]):
+def consultar_reserva_admin(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS"))]):
     r = db.get(Reserva, id_reserva)
     if not r: from app.shared.errors import ApiError; raise ApiError(404, "No encontramos la reserva solicitada.")
     return {"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "estado": r.estado, "dni": r.pasajero_dni, "nombres": r.pasajero_nombres, "apellidos": r.pasajero_apellidos, "vencimiento": r.vencimiento}
@@ -32,7 +32,7 @@ def consultar_reserva_admin(id_reserva: int, db: Annotated[Session, Depends(get_
 def post_reserva(
     data: ReservaRequest,
     db: Annotated[Session, Depends(get_db)],
-    _principal: Annotated[Principal, Depends(require_roles("CAJA"))],
+    _principal: Annotated[Principal, Depends(require_roles("VENTAS"))],
 ):
     return registrar_reserva(db, data)
 
@@ -41,6 +41,6 @@ def post_reserva(
 def post_liberacion(
     id_reserva: int,
     db: Annotated[Session, Depends(get_db)],
-    _principal: Annotated[Principal, Depends(require_roles("CAJA"))],
+    _principal: Annotated[Principal, Depends(require_roles("VENTAS"))],
 ):
     return liberar_reserva(db, id_reserva)
