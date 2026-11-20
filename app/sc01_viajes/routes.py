@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -9,7 +10,7 @@ from app.sc01_viajes.service import consultar_disponibilidad
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
-from app.shared.models import Viaje, AsientoViaje
+from app.shared.models import Viaje, AsientoViaje, Reserva
 from sqlalchemy import select
 from app.sc02_reservas.service import tipo_asiento
 from app.shared.pricing import seat_fare_centavos, seat_layout
@@ -23,7 +24,14 @@ def get_mapa_asientos(id_viaje: int, db: Annotated[Session, Depends(get_db)], _p
     if not viaje:
         from app.shared.errors import ApiError
         raise ApiError(404, "No encontramos el viaje solicitado.")
-    return {"idViaje": id_viaje, "tarifaBase": viaje.tarifa_centavos / 100, "asientos": [{"idAsiento": a.id_asiento, "tipo": tipo_asiento(a.id_asiento), "piso": seat_layout(a.id_asiento)["piso"], "columna": seat_layout(a.id_asiento)["columna"], "precio": seat_fare_centavos(viaje.tarifa_centavos, a.id_asiento) / 100, "estado": a.estado} for a in db.scalars(select(AsientoViaje).where(AsientoViaje.id_viaje == id_viaje).order_by(AsientoViaje.id_asiento)).all()]}
+    ahora = datetime.now(ZoneInfo("America/Lima")).replace(tzinfo=None)
+    reservas = db.scalars(select(Reserva).where(Reserva.id_viaje == id_viaje, Reserva.estado.in_(("TEMPORAL", "CONFIRMADA")))).all()
+    bloqueos = {r.id_asiento: r for r in reservas if r.estado == "CONFIRMADA" or r.vencimiento > ahora}
+    asientos = []
+    for a in db.scalars(select(AsientoViaje).where(AsientoViaje.id_viaje == id_viaje).order_by(AsientoViaje.id_asiento)).all():
+        bloqueo = bloqueos.get(a.id_asiento)
+        asientos.append({"idAsiento": a.id_asiento, "tipo": tipo_asiento(a.id_asiento), "piso": seat_layout(a.id_asiento)["piso"], "columna": seat_layout(a.id_asiento)["columna"], "precio": seat_fare_centavos(viaje.tarifa_centavos, a.id_asiento) / 100, "estado": "RESERVADO" if bloqueo else a.estado, "disponible": bloqueo is None and a.estado == "DISPONIBLE", "idReserva": bloqueo.id_reserva if bloqueo else None})
+    return {"idViaje": id_viaje, "tarifaBase": viaje.tarifa_centavos / 100, "asientos": asientos}
 
 @router.get("/admin/viajes", operation_id="listarViajesAdministracion")
 def listar_viajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))], estado: str | None = None, fecha: date | None = None):
