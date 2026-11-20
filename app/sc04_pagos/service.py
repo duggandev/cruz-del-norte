@@ -107,7 +107,9 @@ def procesar_pago(db: Session, data: PagoRequest, key: str) -> tuple[dict, int]:
         now = datetime.now(timezone.utc)
         vencimiento = reserva.vencimiento
         if vencimiento.tzinfo is None:
-            vencimiento = vencimiento.replace(tzinfo=ZoneInfo("America/Lima"))
+            vencimiento = vencimiento.replace(tzinfo=timezone.utc)
+        else:
+            vencimiento = vencimiento.astimezone(timezone.utc)
         if reserva.estado == "CANCELADA":
             raise ApiError(409, "La reserva está cancelada.")
         if reserva.estado == "VENCIDA" or vencimiento <= now:

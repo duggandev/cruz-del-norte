@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
@@ -23,6 +23,12 @@ def tipo_asiento(id_asiento: int) -> str:
 def _local_naive(value: datetime) -> datetime:
     return value.astimezone(LIMA).replace(tzinfo=None)
 
+def _utc_naive(value: datetime) -> datetime:
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+def _db_expiration(db: Session, value: datetime) -> datetime:
+    return _utc_naive(value) if db.bind.dialect.name == "sqlite" else value
+
 
 def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
     if data.tipo_asiento and data.tipo_asiento != tipo_asiento(data.id_asiento):
@@ -42,8 +48,8 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
         raise ApiError(422, "El DNI del pasajero debe contener exactamente ocho números.")
     try:
         db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
-        now = datetime.now(LIMA)
-        repository.expirar_reservas(db, _local_naive(now))
+        now = datetime.now(timezone.utc)
+        repository.expirar_reservas(db, _utc_naive(now))
         viaje = repository.get_viaje(db, data.id_viaje)
         if not viaje:
             raise ApiError(404, "No encontramos el viaje solicitado.")
@@ -65,7 +71,7 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
             pasajero_nombres=data.pasajero.nombres.strip(),
             pasajero_apellidos=data.pasajero.apellidos.strip(),
             estado="TEMPORAL",
-            vencimiento=_local_naive(expiration),
+            vencimiento=_db_expiration(db, expiration),
         )
         if not reserva.pasajero_nombres or not reserva.pasajero_apellidos:
             raise ApiError(422, "Nombres y apellidos son obligatorios.")
@@ -106,8 +112,8 @@ def consultar_estado_reserva(db: Session, id_reserva: int) -> dict:
     reserva = repository.get_reserva(db, id_reserva)
     if not reserva:
         raise ApiError(404, "No encontramos la reserva solicitada.")
-    now = datetime.now(LIMA)
-    vencimiento = reserva.vencimiento.replace(tzinfo=LIMA) if reserva.vencimiento.tzinfo is None else reserva.vencimiento
+        now = datetime.now(timezone.utc)
+        vencimiento = reserva.vencimiento.replace(tzinfo=timezone.utc) if reserva.vencimiento.tzinfo is None else reserva.vencimiento.astimezone(timezone.utc)
     minutos = max(0.0, (vencimiento - now).total_seconds() / 60)
     if minutos <= 0 and reserva.estado == "TEMPORAL":
         reserva.estado = "VENCIDA"
@@ -118,8 +124,8 @@ def consultar_estado_reserva(db: Session, id_reserva: int) -> dict:
 def liberar_reserva(db: Session, id_reserva: int) -> dict:
     try:
         db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
-        now = datetime.now(LIMA)
-        repository.expirar_reservas(db, _local_naive(now))
+        now = datetime.now(timezone.utc)
+        repository.expirar_reservas(db, _utc_naive(now))
         reserva = repository.get_reserva(db, id_reserva)
         if not reserva:
             raise ApiError(404, "No encontramos la reserva solicitada.")
