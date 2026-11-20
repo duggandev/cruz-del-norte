@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
-from app.sc01_viajes.schemas import DisponibilidadResponse
+from app.sc01_viajes.schemas import DisponibilidadResponse, ViajeCreateRequest
 from app.sc01_viajes.service import consultar_disponibilidad
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
@@ -14,9 +14,24 @@ from app.shared.models import Viaje, AsientoViaje, Reserva
 from sqlalchemy import select
 from app.sc02_reservas.service import tipo_asiento
 from app.shared.pricing import seat_fare_centavos, seat_layout
+from app.shared.errors import ApiError
 
 
 router = APIRouter(prefix="/api/v1", tags=["Disponibilidad de viajes"])
+
+@router.post("/admin/viajes", status_code=201, operation_id="crearViajeAdministracion")
+def crear_viaje_admin(data: ViajeCreateRequest, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))]):
+    if db.get(Viaje, data.id_viaje):
+        raise ApiError(409, "Ya existe un viaje con ese identificador.")
+    capacidad = 60 if data.tipo_bus == "DOS_PISOS_48" else 48
+    viaje = Viaje(id_viaje=data.id_viaje, origen=data.origen.strip(), destino=data.destino.strip(), fecha=data.fecha, hora_salida=data.hora_salida, tarifa_centavos=int(data.tarifa * 100), estado=data.estado, tipo_bus=data.tipo_bus, pisos=2 if capacidad == 60 else 1, capacidad=capacidad)
+    if not viaje.origen or not viaje.destino or viaje.origen.casefold() == viaje.destino.casefold():
+        raise ApiError(422, "Origen y destino son obligatorios y deben ser diferentes.")
+    db.add(viaje)
+    db.flush()
+    db.add_all([AsientoViaje(id_viaje=viaje.id_viaje, id_asiento=numero, estado="DISPONIBLE") for numero in range(1, capacidad + 1)])
+    db.commit()
+    return {"idViaje": viaje.id_viaje, "origen": viaje.origen, "destino": viaje.destino, "fecha": viaje.fecha, "horaSalida": viaje.hora_salida, "tarifa": viaje.tarifa_centavos / 100, "estado": viaje.estado, "tipoBus": viaje.tipo_bus, "pisos": viaje.pisos, "capacidad": viaje.capacidad, "asientosCreados": capacidad}
 
 @router.get("/viajes/{id_viaje}/asientos", operation_id="consultarMapaAsientos")
 def get_mapa_asientos(id_viaje: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS", "EMISION", "MANTENIMIENTO"))]):
