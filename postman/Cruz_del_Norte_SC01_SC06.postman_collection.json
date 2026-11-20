@@ -291,6 +291,21 @@
           "url": "{{baseUrl}}/api/v1/programaciones"
         }
       }]
+    },
+    {
+      "name": "07 - Políticas de pasajeros y reembolsos",
+      "item": [
+        {
+          "name": "200 OK - Consultar políticas de menores y reembolsos",
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/pasajeros/politicas"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Menores de 12 no viajan solos', () => pm.expect(pm.response.json().edadMinimaViajeSolo).to.eql(12));", "pm.test('Reembolso Regular hasta 12 horas', () => pm.expect(pm.response.json().reembolso.tarifaRegular.maxHorasAntes).to.eql(12));"]}}]
+        },
+        {
+          "name": "200 OK - Cotizar reembolso de reserva",
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/pagos/{{idReserva}}/reembolso"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Respuesta incluye elegibilidad', () => pm.expect(pm.response.json()).to.have.property('elegible'));", "pm.test('Respuesta incluye horas antes de salida', () => pm.expect(pm.response.json()).to.have.property('horasAntesSalida'));"]}}]
+        }
+      ]
     }
   ]
 }

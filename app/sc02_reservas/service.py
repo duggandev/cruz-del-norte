@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
@@ -20,6 +20,15 @@ def _local_naive(value: datetime) -> datetime:
 
 
 def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
+    if data.pasajero.fecha_nacimiento:
+        hoy = date.today()
+        edad = hoy.year - data.pasajero.fecha_nacimiento.year - ((hoy.month, hoy.day) < (data.pasajero.fecha_nacimiento.month, data.pasajero.fecha_nacimiento.day))
+        if edad < 0 or edad > 120:
+            raise ApiError(422, "La fecha de nacimiento no es valida.")
+        if edad < 12 and (data.pasajero.viaja_solo or not data.pasajero.acompanante_mayor_edad):
+            raise ApiError(422, "Los menores de 12 anos no pueden viajar solos y requieren un adulto autorizado.")
+        if edad < 18 and not data.pasajero.permiso_notarial:
+            raise ApiError(422, "Los menores que viajan sin sus padres requieren permiso notarial vigente.")
     if data.id_canal == 4:
         raise ApiError(501, "Las plataformas externas todavía no están implementadas.")
     if not data.pasajero.dni.isdigit() or len(data.pasajero.dni) != 8:

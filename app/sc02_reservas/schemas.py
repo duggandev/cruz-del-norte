@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,6 +8,11 @@ class PasajeroReserva(BaseModel):
     dni: str = Field(min_length=1, max_length=20)
     nombres: str = Field(min_length=1, max_length=120)
     apellidos: str = Field(min_length=1, max_length=120)
+    fecha_nacimiento: date | None = Field(default=None, alias="fechaNacimiento")
+    viaja_solo: bool = Field(default=False, alias="viajaSolo")
+    permiso_notarial: bool = Field(default=False, alias="permisoNotarial")
+    acompanante_mayor_edad: bool = Field(default=False, alias="acompananteMayorEdad")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class ReservaRequest(BaseModel):

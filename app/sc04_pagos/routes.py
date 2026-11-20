@@ -8,9 +8,25 @@ from app.sc04_pagos.service import procesar_pago
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
+from app.shared.models import Reserva, Viaje
+from sqlalchemy import select
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
 
 router = APIRouter(prefix="/api/v1", tags=["Pagos"])
+
+@router.get("/pagos/{id_reserva}/reembolso", operation_id="cotizarReembolso", responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}})
+def get_reembolso(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("CAJA"))]):
+    row = db.execute(select(Reserva, Viaje).join(Viaje, Reserva.id_viaje == Viaje.id_viaje).where(Reserva.id_reserva == id_reserva)).one_or_none()
+    if not row:
+        from app.shared.errors import ApiError
+        raise ApiError(404, "No encontramos la reserva solicitada.")
+    reserva, viaje = row
+    salida = datetime.combine(viaje.fecha, time.fromisoformat(viaje.hora_salida), tzinfo=ZoneInfo("America/Lima"))
+    horas = (salida - datetime.now(ZoneInfo("America/Lima"))).total_seconds() / 3600
+    elegible = horas >= 12 and reserva.estado not in {"CANCELADA", "VENCIDA"}
+    return {"idReserva": id_reserva, "elegible": elegible, "horasAntesSalida": round(max(horas, 0), 2), "penalidadPorcentaje": 0 if elegible else None, "mensaje": "Reembolso disponible hasta 12 horas antes para tarifa Regular." if elegible else "Fuera de plazo o reserva no reembolsable."}
 
 
 @router.post(
