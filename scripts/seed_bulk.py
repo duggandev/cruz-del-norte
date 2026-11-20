@@ -119,7 +119,8 @@ def seed_trips_seats_and_vehicles() -> None:
                 trip_id = 3000 + day_offset * len(current_routes) + route_offset
                 if db.get(Viaje, trip_id):
                     continue
-                db.add(Viaje(id_viaje=trip_id, origen=origin, destino=destination, fecha=today + timedelta(days=day_offset), hora_salida=DEPARTURES[route_offset], tarifa_centavos=6500 + route_offset * 500, estado="PROGRAMADO"))
+                tipo_bus = "UN_PISO_48" if route_offset == 3 else "DOS_PISOS_48"
+                db.add(Viaje(id_viaje=trip_id, origen=origin, destino=destination, fecha=today + timedelta(days=day_offset), hora_salida=DEPARTURES[route_offset], tarifa_centavos=6500 + route_offset * 500, estado="PROGRAMADO", tipo_bus=tipo_bus, pisos=1 if tipo_bus == "UN_PISO_48" else 2, capacidad=48))
         db.flush()
         for day_offset in range(42):
             for route_offset in range(len(current_routes)):

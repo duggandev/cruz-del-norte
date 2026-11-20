@@ -1,13 +1,16 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-def seat_layout(id_asiento: int) -> dict:
-    # Convención del bus académico: asientos 1-4 son primer piso; el resto segundo piso.
-    # En cada fila de tres posiciones, la primera es individual y las otras dos forman la pareja.
-    return {"piso": 1 if id_asiento <= 4 else 2, "columna": "INDIVIDUAL" if (id_asiento - 1) % 3 == 0 else "DOBLE"}
+def seat_layout(id_asiento: int, tipo_bus: str = "DOS_PISOS_48") -> dict:
+    if tipo_bus == "UN_PISO_48":
+        return {"piso": 1, "columna": f"C{((id_asiento - 1) % 4) + 1}", "individual": ((id_asiento - 1) % 4) == 0}
+    # Bus de dos pisos: 8 asientos abajo y 40 arriba, configuración 2+1.
+    local = id_asiento - 1 if id_asiento <= 8 else id_asiento - 9
+    # La columna individual es la posición central de cada bloque 2+1.
+    return {"piso": 1 if id_asiento <= 8 else 2, "columna": "INDIVIDUAL" if local % 3 == 1 else "DOBLE", "individual": local % 3 == 1}
 
-def seat_fare_centavos(base_centavos: int, id_asiento: int) -> int:
-    layout = seat_layout(id_asiento)
+def seat_fare_centavos(base_centavos: int, id_asiento: int, tipo_bus: str = "DOS_PISOS_48") -> int:
+    layout = seat_layout(id_asiento, tipo_bus)
     multiplier = Decimal("1.20") if layout["piso"] == 1 else Decimal("1.00")
-    if layout["columna"] == "INDIVIDUAL":
+    if layout["individual"]:
         multiplier *= Decimal("1.10")
     return int((Decimal(base_centavos) * multiplier).quantize(Decimal("1"), rounding=ROUND_HALF_UP))

@@ -19,6 +19,9 @@ class Viaje(Base):
     hora_salida: Mapped[str] = mapped_column(String(5), nullable=False)
     tarifa_centavos: Mapped[int] = mapped_column(Integer, nullable=False)
     estado: Mapped[str] = mapped_column(String(30), nullable=False)
+    tipo_bus: Mapped[str] = mapped_column(String(30), nullable=False, default="DOS_PISOS_48", server_default="DOS_PISOS_48")
+    pisos: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
+    capacidad: Mapped[int] = mapped_column(Integer, nullable=False, default=48, server_default="48")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 

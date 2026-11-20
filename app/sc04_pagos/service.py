@@ -115,7 +115,7 @@ def procesar_pago(db: Session, data: PagoRequest, key: str) -> tuple[dict, int]:
                 reserva.estado = "VENCIDA"
             raise ApiError(410, "La reserva ha vencido.")
         importe_centavos = _centavos(data.importe)
-        importe_esperado = seat_fare_centavos(viaje.tarifa_centavos, reserva.id_asiento)
+        importe_esperado = seat_fare_centavos(viaje.tarifa_centavos, reserva.id_asiento, viaje.tipo_bus)
         if importe_centavos != importe_esperado:
             raise ApiError(422, f"El importe no coincide con la tarifa del asiento ({importe_esperado / 100:.2f}).")
         if repository.get_pago_aprobado(db, data.id_reserva):
