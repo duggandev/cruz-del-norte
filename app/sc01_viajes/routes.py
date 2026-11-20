@@ -26,7 +26,11 @@ def get_mapa_asientos(id_viaje: int, db: Annotated[Session, Depends(get_db)], _p
         raise ApiError(404, "No encontramos el viaje solicitado.")
     ahora = datetime.now(ZoneInfo("America/Lima")).replace(tzinfo=None)
     reservas = db.scalars(select(Reserva).where(Reserva.id_viaje == id_viaje, Reserva.estado.in_(("TEMPORAL", "CONFIRMADA")))).all()
-    bloqueos = {r.id_asiento: r for r in reservas if r.estado == "CONFIRMADA" or r.vencimiento > ahora}
+    bloqueos = {}
+    for r in reservas:
+        vencimiento = r.vencimiento.replace(tzinfo=None) if r.vencimiento.tzinfo else r.vencimiento
+        if r.estado == "CONFIRMADA" or vencimiento > ahora:
+            bloqueos[r.id_asiento] = r
     asientos = []
     for a in db.scalars(select(AsientoViaje).where(AsientoViaje.id_viaje == id_viaje).order_by(AsientoViaje.id_asiento)).all():
         bloqueo = bloqueos.get(a.id_asiento)
