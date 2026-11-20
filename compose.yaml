@@ -126,6 +126,19 @@ services:
       timeout: 5s
       retries: 3
 
+  auth:
+    <<: *service-common
+    environment:
+      <<: *common-env
+      SERVICE_MODULE: app.sc00_auth.main:app
+      SERVICE_PORT: "8087"
+    expose: ["8087"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8087/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   gateway:
     image: nginx:alpine
     restart: unless-stopped
@@ -148,6 +161,8 @@ services:
       sc05-pasajes:
         condition: service_healthy
       sc06-mantenimiento:
+        condition: service_healthy
+      auth:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]

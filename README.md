@@ -4,6 +4,7 @@ Seis aplicaciones FastAPI independientes comparten una única base SQLite: `data
 
 | Servicio | Operaciones | Puerto |
 |---|---|---:|
+| AUTH Autenticacion | `POST /api/v1/auth/login`, `GET /api/v1/auth/roles` | 8087 |
 | SC-01 Disponibilidad Viajes | `GET /api/v1/viajes/disponibilidad` | 8081 |
 | SC-02 Gestión Reservas | `POST /api/v1/reservas`, `POST /api/v1/reservas/{idReserva}/liberacion` | 8082 |
 | SC-03 Validación Pasajeros | `POST /api/v1/pasajeros/validaciones` | 8083 |
