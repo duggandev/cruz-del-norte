@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 class ViajeCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
-    id_viaje: int = Field(alias="idViaje", gt=0)
+    id_viaje: int | None = Field(default=None, alias="idViaje", gt=0)
     origen: str = Field(min_length=1, max_length=120)
     destino: str = Field(min_length=1, max_length=120)
     fecha: date

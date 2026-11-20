@@ -12,7 +12,7 @@ def utc_now() -> datetime:
 
 class Viaje(Base):
     __tablename__ = "viajes"
-    id_viaje: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_viaje: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     origen: Mapped[str] = mapped_column(String(120), nullable=False)
     destino: Mapped[str] = mapped_column(String(120), nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)

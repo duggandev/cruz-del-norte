@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/v1", tags=["Disponibilidad de viajes"])
 
 @router.post("/admin/viajes", status_code=201, operation_id="crearViajeAdministracion")
 def crear_viaje_admin(data: ViajeCreateRequest, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))]):
-    if db.get(Viaje, data.id_viaje):
+    if data.id_viaje is not None and db.get(Viaje, data.id_viaje):
         raise ApiError(409, "Ya existe un viaje con ese identificador.")
     capacidad = 60 if data.tipo_bus == "DOS_PISOS_48" else 48
     viaje = Viaje(id_viaje=data.id_viaje, origen=data.origen.strip(), destino=data.destino.strip(), fecha=data.fecha, hora_salida=data.hora_salida, tarifa_centavos=int(data.tarifa * 100), estado=data.estado, tipo_bus=data.tipo_bus, pisos=2 if capacidad == 60 else 1, capacidad=capacidad)
