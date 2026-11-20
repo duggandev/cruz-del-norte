@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.sc02_reservas import repository
-from app.sc02_reservas.schemas import ReservaRequest
+from app.sc02_reservas.schemas import ReservaRequest, ReservaMultipleRequest
 from app.shared.config import settings
 from app.shared.errors import ApiError
 from app.shared.models import Reserva
@@ -82,6 +82,16 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
     except OperationalError as exc:
         db.rollback()
         raise ApiError(503, "La base de datos está temporalmente ocupada.") from exc
+
+
+def registrar_reservas_multiples(db: Session, data: ReservaMultipleRequest) -> dict:
+    asientos = [item.id_asiento for item in data.pasajeros]
+    if len(set(asientos)) != len(asientos):
+        raise ApiError(422, "No se puede repetir un asiento en la misma compra.")
+    reservas = []
+    for item in data.pasajeros:
+        reservas.append(registrar_reserva(db, ReservaRequest(idViaje=data.id_viaje, idAsiento=item.id_asiento, idCanal=data.id_canal, pasajero=item.pasajero)))
+    return {"reservas": reservas, "cantidad": len(reservas)}
 
 
 def liberar_reserva(db: Session, id_reserva: int) -> dict:

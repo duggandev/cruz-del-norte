@@ -31,6 +31,21 @@ class ReservaResponse(BaseModel):
     estado: str
     vencimiento: datetime
 
+class ReservaMultipleItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id_asiento: int = Field(alias="idAsiento", gt=0)
+    pasajero: PasajeroReserva
+
+class ReservaMultipleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id_viaje: int = Field(alias="idViaje", gt=0)
+    id_canal: int = Field(alias="idCanal", ge=1, le=4)
+    pasajeros: list[ReservaMultipleItem] = Field(min_length=1, max_length=10)
+
+class ReservaMultipleResponse(BaseModel):
+    reservas: list[ReservaResponse]
+    cantidad: int
+
 
 class LiberacionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)

@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.sc02_reservas.schemas import LiberacionResponse, ReservaRequest, ReservaResponse
-from app.sc02_reservas.service import liberar_reserva, registrar_reserva
+from app.sc02_reservas.schemas import LiberacionResponse, ReservaRequest, ReservaResponse, ReservaMultipleRequest, ReservaMultipleResponse
+from app.sc02_reservas.service import liberar_reserva, registrar_reserva, registrar_reservas_multiples
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
@@ -35,6 +35,10 @@ def post_reserva(
     _principal: Annotated[Principal, Depends(require_roles("VENTAS"))],
 ):
     return registrar_reserva(db, data)
+
+@router.post("/reservas/multiples", status_code=201, operation_id="registrarReservasMultiples", response_model=ReservaMultipleResponse, responses=errors)
+def post_reservas_multiples(data: ReservaMultipleRequest, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS"))]):
+    return registrar_reservas_multiples(db, data)
 
 
 @router.post("/reservas/{id_reserva}/liberacion", operation_id="liberarAsiento", response_model=LiberacionResponse, responses=errors)
