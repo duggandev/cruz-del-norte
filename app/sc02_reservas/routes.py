@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.sc02_reservas.schemas import LiberacionResponse, ReservaRequest, ReservaResponse, ReservaMultipleRequest, ReservaMultipleResponse
-from app.sc02_reservas.service import liberar_reserva, registrar_reserva, registrar_reservas_multiples
+from app.sc02_reservas.schemas import LiberacionResponse, ReservaRequest, ReservaResponse, ReservaMultipleRequest, ReservaMultipleResponse, EstadoReservaResponse
+from app.sc02_reservas.service import liberar_reserva, registrar_reserva, registrar_reservas_multiples, consultar_estado_reserva
 from app.shared.database import get_db
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
@@ -39,6 +39,10 @@ def post_reserva(
 @router.post("/reservas/multiples", status_code=201, operation_id="registrarReservasMultiples", response_model=ReservaMultipleResponse, responses=errors)
 def post_reservas_multiples(data: ReservaMultipleRequest, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS"))]):
     return registrar_reservas_multiples(db, data)
+
+@router.get("/reservas/{id_reserva}", response_model=EstadoReservaResponse, operation_id="consultarEstadoReserva", responses=errors)
+def get_estado_reserva(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("VENTAS", "ADMIN"))]):
+    return consultar_estado_reserva(db, id_reserva)
 
 
 @router.post("/reservas/{id_reserva}/liberacion", operation_id="liberarAsiento", response_model=LiberacionResponse, responses=errors)

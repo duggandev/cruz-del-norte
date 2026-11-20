@@ -31,6 +31,7 @@ class ReservaResponse(BaseModel):
     id_asiento: int = Field(alias="idAsiento")
     estado: str
     vencimiento: datetime
+    minutos_restantes: float | None = Field(default=None, alias="minutosRestantes")
 
 class ReservaMultipleItem(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -53,3 +54,10 @@ class LiberacionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     id_reserva: int = Field(alias="idReserva")
     estado: str
+
+class EstadoReservaResponse(BaseModel):
+    id_reserva: int = Field(alias="idReserva")
+    estado: str
+    vencimiento: datetime
+    minutos_restantes: float = Field(alias="minutosRestantes")
+    puede_pagar: bool = Field(alias="puedePagar")

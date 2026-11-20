@@ -179,6 +179,11 @@
           "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idCanal\": 1,\n  \"pasajeros\": [\n    {\"idAsiento\": 45, \"tipoAsiento\": \"ESTANDAR\", \"pasajero\": {\"dni\": \"74859631\", \"nombres\": \"Cliente\", \"apellidos\": \"Multiple Uno\"}},\n    {\"idAsiento\": 46, \"tipoAsiento\": \"ESTANDAR\", \"pasajero\": {\"dni\": \"74859632\", \"nombres\": \"Cliente\", \"apellidos\": \"Multiple Dos\"}}\n  ]\n}"}, "url": "{{baseUrl}}/api/v1/reservas/multiples"}
         },
         {
+          "name": "200 OK - Consultar tiempo restante de reserva",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.test('Incluye minutos restantes', () => pm.expect(body).to.have.property('minutosRestantes'));", "pm.test('Incluye si puede pagar', () => pm.expect(body).to.have.property('puedePagar')); "]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}"}
+        },
+        {
           "name": "200 OK - Liberar reserva",
           "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "pm.test('Reserva queda CANCELADA', () => pm.expect(pm.response.json().estado).to.eql('CANCELADA'));"]}}],
           "request": {"method": "POST", "url": "{{baseUrl}}/api/v1/reservas/{{idReservaLiberacion}}/liberacion"}

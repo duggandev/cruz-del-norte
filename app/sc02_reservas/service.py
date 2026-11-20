@@ -77,6 +77,7 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
             "idAsiento": reserva.id_asiento,
             "estado": reserva.estado,
             "vencimiento": expiration.isoformat(),
+            "minutosRestantes": settings.reservation_ttl_minutes,
         }
         db.commit()
         return body
@@ -99,6 +100,19 @@ def registrar_reservas_multiples(db: Session, data: ReservaMultipleRequest) -> d
     for item in data.pasajeros:
         reservas.append(registrar_reserva(db, ReservaRequest(idViaje=data.id_viaje, idAsiento=item.id_asiento, idCanal=data.id_canal, pasajero=item.pasajero, tipoAsiento=item.tipo_asiento)))
     return {"reservas": reservas, "cantidad": len(reservas)}
+
+
+def consultar_estado_reserva(db: Session, id_reserva: int) -> dict:
+    reserva = repository.get_reserva(db, id_reserva)
+    if not reserva:
+        raise ApiError(404, "No encontramos la reserva solicitada.")
+    now = datetime.now(LIMA)
+    vencimiento = reserva.vencimiento.replace(tzinfo=LIMA) if reserva.vencimiento.tzinfo is None else reserva.vencimiento
+    minutos = max(0.0, (vencimiento - now).total_seconds() / 60)
+    if minutos <= 0 and reserva.estado == "TEMPORAL":
+        reserva.estado = "VENCIDA"
+        db.commit()
+    return {"idReserva": reserva.id_reserva, "estado": reserva.estado, "vencimiento": vencimiento.isoformat(), "minutosRestantes": round(minutos, 2), "puedePagar": reserva.estado == "TEMPORAL" and minutos > 0}
 
 
 def liberar_reserva(db: Session, id_reserva: int) -> dict:
