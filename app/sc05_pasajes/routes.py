@@ -16,7 +16,7 @@ from datetime import date
 router = APIRouter(prefix="/api/v1", tags=["Pasajes"])
 
 @router.get("/admin/pasajes", operation_id="listarPasajesAdministracion")
-def listar_pasajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "EMISION"))], estado: str | None = None):
+def listar_pasajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS", "EMISION"))], estado: str | None = None):
     query = select(Pasaje).order_by(Pasaje.fecha_emision.desc())
     if estado: query = query.where(Pasaje.estado == estado)
     return [{"codigo": p.codigo, "idReserva": p.id_reserva, "estado": p.estado, "fechaEmision": p.fecha_emision, "documentoUrl": p.documento_url} for p in db.scalars(query).all()]
@@ -27,7 +27,7 @@ def historial_ventas(db: Annotated[Session, Depends(get_db)], _principal: Annota
     if desde: query = query.where(func.date(Pasaje.fecha_emision) >= desde.isoformat())
     if hasta: query = query.where(func.date(Pasaje.fecha_emision) <= hasta.isoformat())
     rows = db.execute(query).all()
-    ventas = [{"codigo": p.codigo, "idReserva": r.id_reserva, "dni": r.pasajero_dni, "pasajero": f"{r.pasajero_nombres} {r.pasajero_apellidos}", "origen": v.origen, "destino": v.destino, "fechaViaje": v.fecha, "asiento": r.id_asiento, "importe": pago.importe_centavos / 100, "medioPago": pago.medio_pago, "fechaEmision": p.fecha_emision, "documentoUrl": p.documento_url} for p, r, v, pago in rows]
+    ventas = [{"codigo": p.codigo, "codigoPago": pago.id_transaccion, "idReserva": r.id_reserva, "dni": r.pasajero_dni, "pasajero": f"{r.pasajero_nombres} {r.pasajero_apellidos}", "origen": v.origen, "destino": v.destino, "fechaViaje": v.fecha, "asiento": r.id_asiento, "monto": pago.importe_centavos / 100, "importe": pago.importe_centavos / 100, "medioPago": pago.medio_pago, "fechaEmision": p.fecha_emision, "documentoUrl": p.documento_url} for p, r, v, pago in rows]
     return {"desde": desde, "hasta": hasta, "cantidad": len(ventas), "total": round(sum(item["importe"] for item in ventas), 2), "ventas": ventas}
 
 
