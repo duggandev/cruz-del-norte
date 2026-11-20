@@ -35,8 +35,9 @@ def get_mapa_asientos(id_viaje: int, db: Annotated[Session, Depends(get_db)], _p
     for a in db.scalars(select(AsientoViaje).where(AsientoViaje.id_viaje == id_viaje).order_by(AsientoViaje.id_asiento)).all():
         bloqueo = bloqueos.get(a.id_asiento)
         layout = seat_layout(a.id_asiento, viaje.tipo_bus)
-        asientos.append({"idAsiento": a.id_asiento, "tipo": tipo_asiento(a.id_asiento), "piso": layout["piso"], "columna": layout["columna"], "individual": layout["individual"], "precio": seat_fare_centavos(viaje.tarifa_centavos, a.id_asiento, viaje.tipo_bus) / 100, "estado": "RESERVADO" if bloqueo else a.estado, "disponible": bloqueo is None and a.estado == "DISPONIBLE", "idReserva": bloqueo.id_reserva if bloqueo else None})
-    return {"idViaje": id_viaje, "tipoBus": viaje.tipo_bus, "pisos": viaje.pisos, "capacidad": viaje.capacidad, "tarifaBase": viaje.tarifa_centavos / 100, "asientos": asientos}
+        asientos.append({"idAsiento": a.id_asiento, "tipo": tipo_asiento(a.id_asiento), "piso": layout["piso"], "fila": layout["fila"], "columna": layout["columna"], "columnaNumero": layout["columna_numero"], "columnas": layout["columnas"], "individual": layout["individual"], "precio": seat_fare_centavos(viaje.tarifa_centavos, a.id_asiento, viaje.tipo_bus) / 100, "estado": "RESERVADO" if bloqueo else a.estado, "disponible": bloqueo is None and a.estado == "DISPONIBLE", "idReserva": bloqueo.id_reserva if bloqueo else None})
+    columnas_por_piso = {"1": 3 if viaje.tipo_bus == "DOS_PISOS_48" else 4, "2": 4} if viaje.pisos == 2 else {"1": 4}
+    return {"idViaje": id_viaje, "tipoBus": viaje.tipo_bus, "pisos": viaje.pisos, "capacidad": viaje.capacidad, "columnasPorPiso": columnas_por_piso, "tarifaBase": viaje.tarifa_centavos / 100, "asientos": asientos}
 
 @router.get("/admin/viajes", operation_id="listarViajesAdministracion")
 def listar_viajes_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "MANTENIMIENTO"))], estado: str | None = None, fecha: date | None = None):
