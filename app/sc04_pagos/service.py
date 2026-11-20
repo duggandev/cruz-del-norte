@@ -120,8 +120,9 @@ def procesar_pago(db: Session, data: PagoRequest, key: str) -> tuple[dict, int]:
         importe_esperado = seat_fare_centavos(viaje.tarifa_centavos, reserva.id_asiento, viaje.tipo_bus)
         if importe_centavos != importe_esperado:
             raise ApiError(422, f"El importe no coincide con la tarifa del asiento ({importe_esperado / 100:.2f}).")
-        if repository.get_pago_aprobado(db, data.id_reserva):
-            raise ApiError(409, "La reserva ya tiene un pago aprobado.")
+        pago_aprobado = repository.get_pago_aprobado(db, data.id_reserva)
+        if pago_aprobado:
+            raise ApiError(409, f"La reserva ya tiene un pago aprobado ({pago_aprobado.id_transaccion}); emita el pasaje con esa transaccion.")
 
         mock_sequence = repository.get_next_mock_sequence(db) if data.medio_pago == MedioPago.PASARELA else None
         result = _procesar_proveedor(data, importe_centavos, key, mock_sequence)

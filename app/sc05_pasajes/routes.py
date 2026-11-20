@@ -38,7 +38,8 @@ def historial_ventas(db: Annotated[Session, Depends(get_db)], _principal: Annota
 def post_pasaje(
     data: PasajeRequest,
     db: Annotated[Session, Depends(get_db)],
-    _principal: Annotated[Principal, Depends(require_roles("EMISION"))],
+    # Ventanilla realiza el cobro y completa la emisión del pasaje.
+    _principal: Annotated[Principal, Depends(require_roles("VENTAS", "EMISION"))],
 ):
     body, _path = emitir_pasaje(db, data)
     return body
