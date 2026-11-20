@@ -16,7 +16,7 @@ def main() -> None:
     lima = ZoneInfo("America/Lima")
     with SessionLocal.begin() as db:
         if not db.get(Viaje, 1021):
-            db.add(Viaje(id_viaje=1021, origen="Lima", destino="Ica", fecha=date(2026, 12, 1), hora_salida="10:00", tarifa_centavos=6500, estado="PROGRAMADO", tipo_bus="DOS_PISOS_48", pisos=2, capacidad=48))
+            db.add(Viaje(id_viaje=1021, origen="Lima", destino="Ica", fecha=date(2026, 12, 1), hora_salida="10:00", tarifa_centavos=6500, estado="PROGRAMADO", tipo_bus="DOS_PISOS_48", pisos=2, capacidad=60))
             db.flush()
         if not db.get(Viaje, 1022):
             db.add(Viaje(id_viaje=1022, origen="Chimbote", destino="Lima", fecha=date(2026, 12, 15), hora_salida="08:30", tarifa_centavos=6500, estado="PROGRAMADO", tipo_bus="UN_PISO_48", pisos=1, capacidad=48))
@@ -26,7 +26,7 @@ def main() -> None:
         if not db.get(Vehiculo, 14):
             db.add(Vehiculo(id_vehiculo=14, placa="ABC-123", estado="DISPONIBLE"))
         for id_viaje in (1021, 1022):
-            for numero in range(1, 49):
+            for numero in range(1, 61 if id_viaje == 1021 else 49):
                 if not db.get(AsientoViaje, (id_viaje, numero)):
                     db.add(AsientoViaje(id_viaje=id_viaje, id_asiento=numero, estado="DISPONIBLE"))
     print("Datos de desarrollo insertados (operación idempotente).")

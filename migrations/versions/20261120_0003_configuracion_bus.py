@@ -11,6 +11,7 @@ def upgrade() -> None:
     op.add_column("viajes", sa.Column("tipo_bus", sa.String(length=30), nullable=False, server_default="DOS_PISOS_48"))
     op.add_column("viajes", sa.Column("pisos", sa.Integer(), nullable=False, server_default="2"))
     op.add_column("viajes", sa.Column("capacidad", sa.Integer(), nullable=False, server_default="48"))
+    op.execute("UPDATE viajes SET capacidad = 60 WHERE tipo_bus = 'DOS_PISOS_48'")
 
 def downgrade() -> None:
     op.drop_column("viajes", "capacidad")
