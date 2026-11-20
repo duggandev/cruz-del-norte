@@ -1,5 +1,6 @@
 """Completa a 60 plazas los buses de dos pisos existentes."""
 from alembic import op
+from sqlalchemy import text
 
 revision = "20261120_0004"
 down_revision = "20261120_0003"
@@ -8,18 +9,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("UPDATE viajes SET capacidad = 60 WHERE tipo_bus = 'DOS_PISOS_48'")
-    op.execute("""
-        INSERT INTO asientos_viaje (id_viaje, id_asiento, estado)
-        SELECT v.id_viaje, s.numero, 'DISPONIBLE'
-        FROM viajes v
-        CROSS JOIN generate_series(49, 60) AS s(numero)
-        WHERE v.tipo_bus = 'DOS_PISOS_48'
-          AND NOT EXISTS (
-              SELECT 1 FROM asientos_viaje a
-              WHERE a.id_viaje = v.id_viaje AND a.id_asiento = s.numero
-          )
-    """)
+    connection = op.get_bind()
+    connection.execute(text("UPDATE viajes SET capacidad = 60 WHERE tipo_bus = :tipo"), {"tipo": "DOS_PISOS_48"})
+    viajes = connection.execute(text("SELECT id_viaje FROM viajes WHERE tipo_bus = :tipo"), {"tipo": "DOS_PISOS_48"}).scalars().all()
+    for id_viaje in viajes:
+        for id_asiento in range(49, 61):
+            connection.execute(text("""
+                INSERT INTO asientos_viaje (id_viaje, id_asiento, estado)
+                VALUES (:id_viaje, :id_asiento, 'DISPONIBLE')
+                ON CONFLICT (id_viaje, id_asiento) DO NOTHING
+            """), {"id_viaje": id_viaje, "id_asiento": id_asiento})
 
 
 def downgrade() -> None:
