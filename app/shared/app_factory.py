@@ -12,6 +12,8 @@ def create_app(title: str, version: str = "1.0.0") -> FastAPI:
     # Coolify sobrescriba CORS_ALLOWED_ORIGINS con una variable propia.
     if "http://178.105.247.228:8000" not in origins:
         origins.append("http://178.105.247.228:8000")
+    if "https://appcruzdelnorte.duckdns.org" not in origins:
+        origins.append("https://appcruzdelnorte.duckdns.org")
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
     @app.get("/health", tags=["Health"], summary="Comprobar estado del servicio")

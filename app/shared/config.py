@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     public_pasajes_url: str = "http://localhost:8085/documentos"
     storage_pasajes_path: str = "./storage/pasajes"
     reservation_ttl_minutes: int = 25
-    cors_allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:4200,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:4200,http://127.0.0.1:8080,http://178.105.247.228:8000"
+    cors_allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:4200,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:4200,http://127.0.0.1:8080,http://178.105.247.228:8000,https://appcruzdelnorte.duckdns.org"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
