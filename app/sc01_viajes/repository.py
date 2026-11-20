@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.shared.models import AsientoViaje, Reserva, Viaje
@@ -9,8 +9,8 @@ from app.shared.models import AsientoViaje, Reserva, Viaje
 def find_viajes(db: Session, origen: str, destino: str, fecha: date) -> list[Viaje]:
     return list(db.scalars(
         select(Viaje).where(
-            Viaje.origen.collate("NOCASE") == origen,
-            Viaje.destino.collate("NOCASE") == destino,
+            func.lower(Viaje.origen) == origen.casefold(),
+            func.lower(Viaje.destino) == destino.casefold(),
             Viaje.fecha == fecha,
             Viaje.estado.in_(("PROGRAMADO", "DISPONIBLE")),
         ).order_by(Viaje.hora_salida)
