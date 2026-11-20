@@ -110,6 +110,19 @@ def seed_trips_seats_and_vehicles() -> None:
             if vehicle_id not in existing_vehicles:
                 db.add(Vehiculo(id_vehiculo=vehicle_id, placa=f"CDN-{vehicle_id:03d}", estado="DISPONIBLE" if offset % 5 else "NO_DISPONIBLE"))
 
+        # Oferta operativa desde hoy y para las siguientes seis semanas.
+        # IDs separados para que el sembrado sea idempotente aunque ya exista el lote académico.
+        today = date.today()
+        current_routes = [("Lima", "Ica"), ("Lima", "Chimbote"), ("Ica", "Lima"), ("Chimbote", "Lima")]
+        for day_offset in range(42):
+            for route_offset, (origin, destination) in enumerate(current_routes):
+                trip_id = 3000 + day_offset * len(current_routes) + route_offset
+                if db.get(Viaje, trip_id):
+                    continue
+                db.add(Viaje(id_viaje=trip_id, origen=origin, destino=destination, fecha=today + timedelta(days=day_offset), hora_salida=DEPARTURES[route_offset], tarifa_centavos=6500 + route_offset * 500, estado="PROGRAMADO"))
+                for seat in range(1, SEATS_PER_TRIP + 1):
+                    db.add(AsientoViaje(id_viaje=trip_id, id_asiento=seat, estado="DISPONIBLE"))
+
 
 def seed_reservations() -> None:
     with SessionLocal() as query_db:
