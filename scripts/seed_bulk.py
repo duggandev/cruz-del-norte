@@ -175,24 +175,29 @@ def seed_payments_and_tickets() -> None:
             for payment in db.scalars(select(Pago).where(Pago.id_transaccion.like("SEED-APP-%")))
         }
         for offset in range(TRIP_COUNT):
-            item_id = reservation_id(offset, 1)
-            code = f"CDN-SEED-{item_id}"
-            if code in existing_codes:
-                continue
-            reservation = db.get(Reserva, item_id)
-            payment = approved_payments[item_id]
-            trip = trips[reservation.id_viaje]
-            pdf_path = settings.pasajes_directory / f"{code}.pdf"
-            create_seed_pdf(pdf_path, code, reservation, trip, payment)
-            db.add(Pasaje(
-                codigo=code,
-                id_reserva=item_id,
-                id_pago=payment.id_pago,
-                estado="EMITIDO",
-                fecha_emision=datetime(2026, 11, 13, 9, 0, tzinfo=LIMA),
-                documento_url=f"{settings.public_pasajes_url.rstrip('/')}/{code}.pdf",
-                documento_path=str(pdf_path),
-            ))
+            for seat in range(1, RESERVATIONS_PER_TRIP + 1):
+                if (seat - 1) % 4 != 0:
+                    continue
+                item_id = reservation_id(offset, seat)
+                code = f"CDN-SEED-{item_id}"
+                if code in existing_codes:
+                    continue
+                reservation = db.get(Reserva, item_id)
+                payment = approved_payments.get(item_id)
+                if not reservation or not payment:
+                    continue
+                trip = trips[reservation.id_viaje]
+                pdf_path = settings.pasajes_directory / f"{code}.pdf"
+                create_seed_pdf(pdf_path, code, reservation, trip, payment)
+                db.add(Pasaje(
+                    codigo=code,
+                    id_reserva=item_id,
+                    id_pago=payment.id_pago,
+                    estado="EMITIDO",
+                    fecha_emision=datetime(2026, 11, 13, 9, 0, tzinfo=LIMA),
+                    documento_url=f"{settings.public_pasajes_url.rstrip('/')}/{code}.pdf",
+                    documento_path=str(pdf_path),
+                ))
 
 
 def seed_maintenance() -> None:

@@ -25,7 +25,7 @@ def listar_pasajeros_admin(db: Annotated[Session, Depends(get_db)], _principal: 
         if reserva.pasajero_dni in seen:
             continue
         seen.add(reserva.pasajero_dni)
-        pasajeros.append({"id": reserva.id_reserva, "dni": reserva.pasajero_dni, "nombres": reserva.pasajero_nombres, "apellidos": reserva.pasajero_apellidos, "nombreCompleto": f"{reserva.pasajero_nombres} {reserva.pasajero_apellidos}", "estado": reserva.estado, "codigo": pasaje.codigo if pasaje else None, "idPasaje": pasaje.id_pasaje if pasaje else None})
+        pasajeros.append({"id": reserva.id_reserva, "dni": reserva.pasajero_dni, "nombres": reserva.pasajero_nombres, "apellidos": reserva.pasajero_apellidos, "nombreCompleto": f"{reserva.pasajero_nombres} {reserva.pasajero_apellidos}", "estado": reserva.estado, "tienePasaje": pasaje is not None, "codigo": pasaje.codigo if pasaje else None, "idPasaje": pasaje.id_pasaje if pasaje else None})
     return pasajeros
 
 @router.post("/pasajeros/validaciones", operation_id="validarPasajero", response_model=ValidacionPasajeroResponse, responses={203: {"model": ValidacionPasajeroResponse}, **{code: {"model": ErrorResponse} for code in (400, 401, 403, 406, 429, 500, 503)}})
