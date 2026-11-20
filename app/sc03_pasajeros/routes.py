@@ -4,7 +4,7 @@ from app.sc03_pasajeros.schemas import ValidacionPasajeroRequest, ValidacionPasa
 from app.sc03_pasajeros.service import validar_pasajero, politicas_viaje
 from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
-from app.shared.models import Reserva
+from app.shared.models import Reserva, Pasaje
 from app.shared.database import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -17,9 +17,16 @@ def get_politicas():
 
 @router.get("/admin/pasajeros", operation_id="listarPasajerosAdministracion")
 def listar_pasajeros_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS"))], dni: str | None = None):
-    query = select(Reserva.pasajero_dni, Reserva.pasajero_nombres, Reserva.pasajero_apellidos).distinct()
+    query = select(Reserva, Pasaje).outerjoin(Pasaje, Pasaje.id_reserva == Reserva.id_reserva).order_by(Reserva.created_at.desc())
     if dni: query = query.where(Reserva.pasajero_dni == dni)
-    return [{"dni": row[0], "nombres": row[1], "apellidos": row[2]} for row in db.execute(query).all()]
+    seen: set[str] = set()
+    pasajeros = []
+    for reserva, pasaje in db.execute(query).all():
+        if reserva.pasajero_dni in seen:
+            continue
+        seen.add(reserva.pasajero_dni)
+        pasajeros.append({"id": reserva.id_reserva, "dni": reserva.pasajero_dni, "nombres": reserva.pasajero_nombres, "apellidos": reserva.pasajero_apellidos, "nombreCompleto": f"{reserva.pasajero_nombres} {reserva.pasajero_apellidos}", "estado": reserva.estado, "codigo": pasaje.codigo if pasaje else None, "idPasaje": pasaje.id_pasaje if pasaje else None})
+    return pasajeros
 
 @router.post("/pasajeros/validaciones", operation_id="validarPasajero", response_model=ValidacionPasajeroResponse, responses={203: {"model": ValidacionPasajeroResponse}, **{code: {"model": ErrorResponse} for code in (400, 401, 403, 406, 429, 500, 503)}})
 def post_validacion(data: ValidacionPasajeroRequest, response: Response, _principal: Annotated[Principal, Depends(require_roles("VENTAS", "EMISION", "MANTENIMIENTO"))]):
