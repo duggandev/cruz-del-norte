@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,8 @@ from app.sc02_reservas import repository
 from app.sc02_reservas.schemas import ReservaRequest, ReservaMultipleRequest
 from app.shared.config import settings
 from app.shared.errors import ApiError
-from app.shared.models import Reserva
+from app.shared.models import Reserva, Viaje
+from app.shared.pricing import seat_layout
 
 
 LIMA = ZoneInfo("America/Lima")
@@ -81,6 +82,8 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
             "idReserva": reserva.id_reserva,
             "idViaje": reserva.id_viaje,
             "idAsiento": reserva.id_asiento,
+            "numeroAsiento": seat_layout(reserva.id_asiento, viaje.tipo_bus)["numero"],
+            "piso": seat_layout(reserva.id_asiento, viaje.tipo_bus)["piso"],
             "estado": reserva.estado,
             "vencimiento": expiration.isoformat(),
             "minutosRestantes": settings.reservation_ttl_minutes,
@@ -109,16 +112,18 @@ def registrar_reservas_multiples(db: Session, data: ReservaMultipleRequest) -> d
 
 
 def consultar_estado_reserva(db: Session, id_reserva: int) -> dict:
-    reserva = repository.get_reserva(db, id_reserva)
-    if not reserva:
+    row = db.execute(select(Reserva, Viaje).join(Viaje, Reserva.id_viaje == Viaje.id_viaje).where(Reserva.id_reserva == id_reserva)).one_or_none()
+    if not row:
         raise ApiError(404, "No encontramos la reserva solicitada.")
-        now = datetime.now(timezone.utc)
-        vencimiento = reserva.vencimiento.replace(tzinfo=timezone.utc) if reserva.vencimiento.tzinfo is None else reserva.vencimiento.astimezone(timezone.utc)
+    reserva, viaje = row
+    now = datetime.now(timezone.utc)
+    vencimiento = reserva.vencimiento.replace(tzinfo=timezone.utc) if reserva.vencimiento.tzinfo is None else reserva.vencimiento.astimezone(timezone.utc)
     minutos = max(0.0, (vencimiento - now).total_seconds() / 60)
     if minutos <= 0 and reserva.estado == "TEMPORAL":
         reserva.estado = "VENCIDA"
         db.commit()
-    return {"idReserva": reserva.id_reserva, "estado": reserva.estado, "vencimiento": vencimiento.isoformat(), "minutosRestantes": round(minutos, 2), "puedePagar": reserva.estado == "TEMPORAL" and minutos > 0}
+    layout = seat_layout(reserva.id_asiento, viaje.tipo_bus)
+    return {"idReserva": reserva.id_reserva, "idViaje": reserva.id_viaje, "idAsiento": reserva.id_asiento, "numeroAsiento": layout["numero"], "piso": layout["piso"], "estado": reserva.estado, "vencimiento": vencimiento.isoformat(), "minutosRestantes": round(minutos, 2), "puedePagar": reserva.estado == "TEMPORAL" and minutos > 0}
 
 
 def liberar_reserva(db: Session, id_reserva: int) -> dict:

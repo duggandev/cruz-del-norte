@@ -29,6 +29,8 @@ class ReservaResponse(BaseModel):
     id_reserva: int = Field(alias="idReserva")
     id_viaje: int = Field(alias="idViaje")
     id_asiento: int = Field(alias="idAsiento")
+    numero_asiento: int | None = Field(default=None, alias="numeroAsiento")
+    piso: int | None = None
     estado: str
     vencimiento: datetime
     minutos_restantes: float | None = Field(default=None, alias="minutosRestantes")
@@ -56,6 +58,10 @@ class LiberacionResponse(BaseModel):
     estado: str
 
 class EstadoReservaResponse(BaseModel):
+    id_viaje: int | None = Field(default=None, alias="idViaje")
+    id_asiento: int | None = Field(default=None, alias="idAsiento")
+    numero_asiento: int | None = Field(default=None, alias="numeroAsiento")
+    piso: int | None = None
     id_reserva: int = Field(alias="idReserva")
     estado: str
     vencimiento: datetime

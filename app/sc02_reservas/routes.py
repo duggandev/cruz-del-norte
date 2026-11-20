@@ -10,6 +10,8 @@ from app.shared.errors import ErrorResponse
 from app.shared.security import Principal, require_roles
 from app.shared.models import Reserva
 from sqlalchemy import select
+from app.shared.models import Viaje
+from app.shared.pricing import seat_layout
 
 
 router = APIRouter(prefix="/api/v1", tags=["Reservas"])
@@ -19,13 +21,15 @@ errors = {code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 4
 def listar_reservas_admin(db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS"))], estado: str | None = None):
     query = select(Reserva).order_by(Reserva.created_at.desc())
     if estado: query = query.where(Reserva.estado == estado)
-    return [{"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "estado": r.estado, "dni": r.pasajero_dni, "vencimiento": r.vencimiento} for r in db.scalars(query).all()]
+    return [{"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "numeroAsiento": seat_layout(r.id_asiento, db.get(Viaje, r.id_viaje).tipo_bus)["numero"], "piso": seat_layout(r.id_asiento, db.get(Viaje, r.id_viaje).tipo_bus)["piso"], "estado": r.estado, "dni": r.pasajero_dni, "vencimiento": r.vencimiento} for r in db.scalars(query).all()]
 
 @router.get("/admin/reservas/{id_reserva}", operation_id="consultarReservaAdministracion", responses=errors)
 def consultar_reserva_admin(id_reserva: int, db: Annotated[Session, Depends(get_db)], _principal: Annotated[Principal, Depends(require_roles("ADMIN", "VENTAS"))]):
     r = db.get(Reserva, id_reserva)
     if not r: from app.shared.errors import ApiError; raise ApiError(404, "No encontramos la reserva solicitada.")
-    return {"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "estado": r.estado, "dni": r.pasajero_dni, "nombres": r.pasajero_nombres, "apellidos": r.pasajero_apellidos, "vencimiento": r.vencimiento}
+    viaje = db.get(Viaje, r.id_viaje)
+    layout = seat_layout(r.id_asiento, viaje.tipo_bus)
+    return {"idReserva": r.id_reserva, "idViaje": r.id_viaje, "idAsiento": r.id_asiento, "numeroAsiento": layout["numero"], "piso": layout["piso"], "estado": r.estado, "dni": r.pasajero_dni, "nombres": r.pasajero_nombres, "apellidos": r.pasajero_apellidos, "vencimiento": r.vencimiento}
 
 
 @router.post("/reservas", status_code=201, operation_id="registrarReserva", response_model=ReservaResponse, responses=errors)
