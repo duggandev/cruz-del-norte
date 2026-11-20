@@ -11,6 +11,8 @@
     {"key": "token", "value": ""},
     {"key": "idViaje", "value": ""},
     {"key": "idAsiento", "value": ""},
+    {"key": "tipoAsiento", "value": ""},
+    {"key": "idAsientoMultiple", "value": ""},
     {"key": "idAsientoLiberacion", "value": ""},
     {"key": "importe", "value": ""},
     {"key": "idReserva", "value": ""},
@@ -116,6 +118,11 @@
           "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2026-12-01"}
         },
         {
+          "name": "200 OK - Consultar mapa y precios de asientos",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 200', () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.test('Incluye tarifa base y asientos', () => { pm.expect(body).to.have.property('tarifaBase'); pm.expect(body.asientos).to.be.an('array').that.is.not.empty; });", "const seat = body.asientos.find(a => a.estado === 'DISPONIBLE');", "pm.expect(seat).to.exist;", "pm.collectionVariables.set('idViaje', body.idViaje); pm.collectionVariables.set('idAsiento', seat.idAsiento); pm.collectionVariables.set('tipoAsiento', seat.tipo); pm.collectionVariables.set('importe', seat.precio);"]}}],
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/{{idViaje}}/asientos"}
+        },
+        {
           "name": "204 No Content - Fecha sin salidas programadas",
           "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 204', () => pm.response.to.have.status(204));", "pm.test('Respuesta sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"]}}],
           "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/viajes/disponibilidad?origen=Lima&destino=Ica&fecha=2035-12-31"}
@@ -153,7 +160,7 @@
           "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.test('Reserva tiene identificador', () => pm.expect(body.idReserva).to.be.a('number'));", "pm.test('Reserva queda TEMPORAL', () => pm.expect(body.estado).to.eql('TEMPORAL'));", "pm.collectionVariables.set('idReserva', body.idReserva);"]}}],
           "request": {
             "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsiento}},\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859621\", \"nombres\": \"Prueba\", \"apellidos\": \"Postman VPS\"}\n}"},
+            "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsiento}},\n  \"tipoAsiento\": \"{{tipoAsiento}}\",\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859621\", \"nombres\": \"Prueba\", \"apellidos\": \"Postman VPS\"}\n}"},
             "url": "{{baseUrl}}/api/v1/reservas"
           }
         },
@@ -165,6 +172,11 @@
             "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idAsiento\": {{idAsientoLiberacion}},\n  \"idCanal\": 1,\n  \"pasajero\": {\"dni\": \"74859622\", \"nombres\": \"Prueba\", \"apellidos\": \"Liberación\"}\n}"},
             "url": "{{baseUrl}}/api/v1/reservas"
           }
+        },
+        {
+          "name": "201 Created - Reservar varios asientos",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Status code es 201', () => pm.response.to.have.status(201));", "pm.test('Crea dos reservas', () => pm.expect(pm.response.json().cantidad).to.eql(2));"]}}],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"idViaje\": {{idViaje}},\n  \"idCanal\": 1,\n  \"pasajeros\": [\n    {\"idAsiento\": 45, \"tipoAsiento\": \"ESTANDAR\", \"pasajero\": {\"dni\": \"74859631\", \"nombres\": \"Cliente\", \"apellidos\": \"Multiple Uno\"}},\n    {\"idAsiento\": 46, \"tipoAsiento\": \"ESTANDAR\", \"pasajero\": {\"dni\": \"74859632\", \"nombres\": \"Cliente\", \"apellidos\": \"Multiple Dos\"}}\n  ]\n}"}, "url": "{{baseUrl}}/api/v1/reservas/multiples"}
         },
         {
           "name": "200 OK - Liberar reserva",
