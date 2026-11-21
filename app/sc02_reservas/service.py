@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, text
@@ -117,7 +118,7 @@ def retener_asiento(db: Session, data: ReservaHoldRequest) -> dict:
             raise ApiError(409, "El asiento ya no está disponible.")
         expiration = now + timedelta(minutes=settings.reservation_ttl_minutes)
         reserva = Reserva(id_viaje=data.id_viaje, id_asiento=data.id_asiento, id_canal=data.id_canal,
-                          pasajero_dni=f"HOLD-{data.id_viaje}-{data.id_asiento}-{int(now.timestamp())}",
+                          pasajero_dni=f"H{uuid4().hex[:19]}",
                           pasajero_nombres="Pendiente", pasajero_apellidos="Pendiente", estado="TEMPORAL",
                           vencimiento=_db_expiration(db, expiration))
         db.add(reserva); db.flush()
