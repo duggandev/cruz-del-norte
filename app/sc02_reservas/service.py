@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.sc02_reservas import repository
-from app.sc02_reservas.schemas import ReservaRequest, ReservaMultipleRequest
+from app.sc02_reservas.schemas import ReservaRequest, ReservaMultipleRequest, ReservaHoldRequest, PasajeroUpdateRequest
 from app.shared.config import settings
 from app.shared.errors import ApiError
 from app.shared.models import Reserva, Viaje
@@ -99,6 +99,52 @@ def registrar_reserva(db: Session, data: ReservaRequest) -> dict:
     except OperationalError as exc:
         db.rollback()
         raise ApiError(503, "La base de datos está temporalmente ocupada.") from exc
+
+
+def retener_asiento(db: Session, data: ReservaHoldRequest) -> dict:
+    """Bloquea el asiento inmediatamente al seleccionarlo en el mapa."""
+    try:
+        db.execute(text("BEGIN IMMEDIATE" if db.bind.dialect.name == "sqlite" else "BEGIN"))
+        now = datetime.now(timezone.utc)
+        repository.expirar_reservas(db, _utc_naive(now))
+        viaje = repository.get_viaje(db, data.id_viaje)
+        if not viaje:
+            raise ApiError(404, "No encontramos el viaje solicitado.")
+        asiento = repository.get_asiento(db, data.id_viaje, data.id_asiento)
+        if not asiento:
+            raise ApiError(404, "El asiento no existe para el viaje indicado.")
+        if asiento.estado != "DISPONIBLE" or repository.get_bloqueo(db, data.id_viaje, data.id_asiento):
+            raise ApiError(409, "El asiento ya no está disponible.")
+        expiration = now + timedelta(minutes=settings.reservation_ttl_minutes)
+        reserva = Reserva(id_viaje=data.id_viaje, id_asiento=data.id_asiento, id_canal=data.id_canal,
+                          pasajero_dni=f"HOLD-{data.id_viaje}-{data.id_asiento}-{int(now.timestamp())}",
+                          pasajero_nombres="Pendiente", pasajero_apellidos="Pendiente", estado="TEMPORAL",
+                          vencimiento=_db_expiration(db, expiration))
+        db.add(reserva); db.flush()
+        body = {"idReserva": reserva.id_reserva, "idViaje": reserva.id_viaje, "idAsiento": reserva.id_asiento,
+                "numeroAsiento": seat_layout(reserva.id_asiento, viaje.tipo_bus)["numero"], "piso": seat_layout(reserva.id_asiento, viaje.tipo_bus)["piso"],
+                "estado": reserva.estado, "vencimiento": expiration.isoformat(), "minutosRestantes": settings.reservation_ttl_minutes}
+        db.commit()
+        return body
+    except ApiError:
+        db.rollback(); raise
+    except IntegrityError as exc:
+        db.rollback(); raise ApiError(409, "El asiento fue reservado por otra solicitud.") from exc
+
+
+def actualizar_pasajero(db: Session, id_reserva: int, data: PasajeroUpdateRequest) -> dict:
+    if not data.dni.isdigit() or len(data.dni) != 8:
+        raise ApiError(422, "El DNI del pasajero debe contener exactamente ocho números.")
+    reserva = repository.get_reserva(db, id_reserva)
+    if not reserva:
+        raise ApiError(404, "No encontramos la reserva solicitada.")
+    if reserva.estado != "TEMPORAL":
+        raise ApiError(409, "La reserva ya no admite datos de pasajero.")
+    reserva.pasajero_dni, reserva.pasajero_nombres, reserva.pasajero_apellidos = data.dni, data.nombres.strip(), data.apellidos.strip()
+    if not reserva.pasajero_nombres or not reserva.pasajero_apellidos:
+        raise ApiError(422, "Nombres y apellidos son obligatorios.")
+    db.commit()
+    return {"idReserva": reserva.id_reserva, "estado": reserva.estado}
 
 
 def registrar_reservas_multiples(db: Session, data: ReservaMultipleRequest) -> dict:

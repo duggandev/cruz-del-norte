@@ -24,6 +24,20 @@ class ReservaRequest(BaseModel):
     tipo_asiento: str | None = Field(default=None, alias="tipoAsiento", pattern="^(VIP|PREFERENCIAL|ESTANDAR)$")
 
 
+class ReservaHoldRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id_viaje: int = Field(alias="idViaje", gt=0)
+    id_asiento: int = Field(alias="idAsiento", gt=0)
+    id_canal: int = Field(default=1, alias="idCanal", ge=1, le=4)
+
+
+class PasajeroUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    dni: str = Field(min_length=1, max_length=20)
+    nombres: str = Field(min_length=1, max_length=120)
+    apellidos: str = Field(min_length=1, max_length=120)
+
+
 class ReservaResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     id_reserva: int = Field(alias="idReserva")
