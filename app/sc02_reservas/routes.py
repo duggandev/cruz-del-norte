@@ -84,12 +84,11 @@ def post_liberacion(
     _principal: Annotated[Principal, Depends(require_roles("VENTAS"))],
     background_tasks: BackgroundTasks,
 ):
-    reserva = db.get(Reserva, id_reserva)
-    if not reserva:
-        from app.shared.errors import ApiError
-        raise ApiError(404, "No encontramos la reserva solicitada.")
-    trip_id = reserva.id_viaje
     body = liberar_reserva(db, id_reserva)
+    # Consultar después del commit evita abrir una transacción antes del BEGIN
+    # controlado por liberar_reserva.
+    reserva = db.get(Reserva, id_reserva)
+    trip_id = reserva.id_viaje
     background_tasks.add_task(realtime.publish, trip_id, {
         "type": "seat_released", "idViaje": trip_id,
         "idAsiento": reserva.id_asiento, "idReserva": id_reserva,
