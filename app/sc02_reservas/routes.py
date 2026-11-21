@@ -117,7 +117,7 @@ def _websocket_principal(websocket: WebSocket):
         return None
 
 
-@router.websocket("/api/v1/reservas/ws/{id_viaje}")
+@router.websocket("/reservas/ws/{id_viaje}")
 async def reservas_websocket(websocket: WebSocket, id_viaje: int):
     """Emite el mapa inicial y cambios de asientos confirmados en tiempo real.
 
