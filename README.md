@@ -27,11 +27,11 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Cambie `JWT_SECRET_KEY` y `POSTGRES_PASSWORD` en `.env` por secretos seguros. `RESERVATION_TTL_MINUTES` controla la duración de las reservas temporales.
+Cambie `JWT_SECRET_KEY` y `POSTGRES_PASSWORD` en `.env` por secretos seguros. `RESERVATION_TTL_MINUTES` controla la duración de las reservas temporales (15 minutos por defecto). Para conectar el mismo SOA a Supabase copie `.env.supabase.example`, complete la contraseña de Database y ejecute `alembic upgrade head` o la migración `supabase_realtime_seat_locks` del proyecto.
 
 ## Base de datos y migraciones
 
-Los seis servicios y AUTH leen el mismo PostgreSQL mediante `DATABASE_URL`. Compose usa PostgreSQL 16 con volumen persistente, migraciones Alembic y healthcheck. `DATABASE_PATH` queda como fallback para pruebas locales SQLite.
+Los seis servicios y AUTH leen el mismo PostgreSQL mediante `DATABASE_URL`; Supabase funciona como ese PostgreSQL gestionado, sin cambiar los límites de los microservicios. La tabla `seat_locks` y el trigger `sync_seat_lock` publican cambios en `supabase_realtime`; el frontend se suscribe por WebSocket y un job `pg_cron` ejecuta `expire_seat_locks()` cada minuto.
 
 ```powershell
 alembic upgrade head
